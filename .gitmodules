@@ -1,0 +1,9 @@
+[submodule "firmware_services"]
+	path = firmware_services
+	url = https://github.com/analogdevicesinc/energy-firmware-services.git
+[submodule "ade_registers"]
+	path = ade_registers
+	url = https://github.com/analogdevicesinc/energy-ade-registers.git
+[submodule "board_support"]
+	path = board_support
+	url = https://github.com/analogdevicesinc/energy-board-support.git
