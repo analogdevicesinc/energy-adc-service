@@ -13,8 +13,8 @@ Example includes headers [app_cfg.h](projects/config/app_cfg.h) and [adc_datapat
 
 ### Building, Running, and Debugging Examples
 
-- `CMakeLists.txt` for the example project is present in the [projects](examples/projects/) folder.
-- A [VS Code workspace](examples/projects/frame_format_example.code-workspace) is also given as part of the example.
+- [`CMakeLists.txt`](projects/CMakeLists.txt) is provided for building the example
+- A [VS Code workspace](projects/frame_format_example.code-workspace) is also given as part of the example.
 - See the [board support readme](https://github.com/analogdevicesinc/energy-board-support/blob/main/stm/app_mcu_h5/readme.md) for instructions on building, running, and debugging the example.
 
 ### Board Support Functions
@@ -29,8 +29,7 @@ The following functions from the [board_support repo](https://github.com/analogd
 - `EvbAdeSpiTransceive`
 - `EvbFlushMessages`
 
-
-The sample read example project shows how to call various APIs and interface functions of the ADC Service. The firmware initializes the ADC service, configures the ADCs, collect the samples and send it over UART.
+.
 
 
 
