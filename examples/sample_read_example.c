@@ -11,8 +11,8 @@
 /* Number of samples to buffer*/
 #define ADC_NUM_SAMPLES_REQUIRED 64000
 
-static uint8_t voltageSlots[APP_CFG_MAX_NUM_VOLTAGE_CHANNELS] = {3, 0};
-static uint8_t currentSlots[APP_CFG_MAX_NUM_CURRENT_CHANNELS] = {2, 1};
+static uint8_t voltageSlots[APP_CFG_MAX_NUM_VOLTAGE_CHANNELS] = {2, 6, 3};
+static uint8_t currentSlots[APP_CFG_MAX_NUM_CURRENT_CHANNELS] = {0, 4, 1, 5};
 
 static int32_t adcSamples[ADC_NUM_SAMPLES_REQUIRED];
 static volatile int32_t dready = 0;
