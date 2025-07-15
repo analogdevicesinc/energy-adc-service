@@ -8,8 +8,10 @@
 #include "message.h"
 #include <string.h>
 
-/* Number of samples to buffer*/
+/* Max number of samples to buffer */
 #define ADC_NUM_SAMPLES_REQUIRED 64000
+/* Max number of channels */
+#define TOTAL_CHANNELS (APP_CFG_MAX_NUM_VOLTAGE_CHANNELS + APP_CFG_MAX_NUM_CURRENT_CHANNELS)
 
 static uint8_t voltageSlots[APP_CFG_MAX_NUM_VOLTAGE_CHANNELS] = {2, 6, 3};
 static uint8_t currentSlots[APP_CFG_MAX_NUM_CURRENT_CHANNELS] = {0, 4, 1, 5};
@@ -24,11 +26,12 @@ static void *hEvb;
 static void DreadyCallback(uint32_t port, uint32_t pin);
 static void SpiRxCallback(void);
 static void PrintOutput(int32_t *pSamples, int32_t numSamples);
+
 int main()
 {
     int32_t i;
     int32_t numSamples = 0;
-    int32_t numRequiredSamples = ADC_NUM_SAMPLES_REQUIRED;
+    int32_t numRequiredSamples = (ADC_NUM_SAMPLES_REQUIRED / TOTAL_CHANNELS) * TOTAL_CHANNELS;
     int32_t numSamplesPerChannelToDisplay = 10;
     ADC_INTERFACE_INFO *pAdcsIf = &adcsIf;
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
@@ -94,6 +97,7 @@ int main()
             }
         }
     }
+
 #ifdef DISABLE_ASCII_OUT
     printf("Collected %d samples\n", numSamples);
     printf("Displaying first %d samples per channel:\n", numSamplesPerChannelToDisplay);
