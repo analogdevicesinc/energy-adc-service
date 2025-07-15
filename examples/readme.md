@@ -12,8 +12,8 @@ Example includes headers [app_cfg.h](projects/config/app_cfg.h) and [adc_datapat
 
 ## Building, Running, and Debugging Examples
 
-- `CMakeLists.txt` for the example project is present in the [projects](examples/projects/) folder.
-- A [VS Code workspace](examples/projects/sample_read_example.code-workspace) is also given as part of the example.
+- [`CMakeLists.txt`](projects/CMakeLists.txt) is provided to build f the example project
+- A [VS Code workspace](projects/sample_read_example.code-workspace) is also given as part of the example.
 - See the [board support readme](https://github.com/analogdevicesinc/energy-board-support/blob/main/stm/app_mcu_h5/readme.md) for instructions on building, running, and debugging the example.
 
 ### Board Support Functions
