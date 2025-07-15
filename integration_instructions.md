@@ -48,12 +48,6 @@ The ADC Service API assembles and sends SPI commands to the ADC, parses response
 
 Refer to the ADC Service Doxygen-generated documentation for details on all APIs. To generate the documentation, run the following command from the [api_docs](./docs/api_docs) folder:
 
-```sh
-doxygen adc_service_doxy_config
-```
-
-This will generate HTML documentation under the [docs/api_docs/html](docs/api_docs/html) folder. The file [adc_service_api_documentation.html](docs/api_docs/adc_service_api_documentation.html) serves as the entry point for the documentation.
-
 ## Multiple Instantiation
 
 You can create multiple instances of the ADC Service by declaring handles of type `ADI_ADC_HANDLE` and calling the `adi_adc_Create` API for each handle. This allows you to manage multiple ADC devices independently within your application.
