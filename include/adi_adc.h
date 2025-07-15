@@ -81,7 +81,7 @@ extern "C" {
 #endif
 
 #ifndef APP_CFG_MAX_SAMPLE_BLOCK_SIZE
-/** Default sample block size. */
+/** block size */
 #define APP_CFG_MAX_SAMPLE_BLOCK_SIZE 4
 #endif
 
@@ -125,7 +125,7 @@ typedef enum
 } ADI_ADC_TYPE;
 
 /**
- * Enum for stream mode.
+ * Enumeration for stream mode.
  */
 typedef enum
 {
@@ -327,7 +327,7 @@ typedef struct
  */
 
 /**
- * Enum for run state.
+ * Enumeration for run state.
  */
 typedef enum
 {

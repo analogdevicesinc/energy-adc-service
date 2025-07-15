@@ -24,18 +24,14 @@ extern "C" {
 #define APP_CFG_IGNORE_RX_BUFFER_OVERFLOW 1
 /** Enable callback from ADC service */
 #define APP_CFG_ENABLE_ADCS_CALLBACK 0
-/** Maximum number of voltage channels */
-#define APP_CFG_MAX_NUM_VOLTAGE_CHANNELS 2
-/** Maximum number of current channels */
-#define APP_CFG_MAX_NUM_CURRENT_CHANNELS 2
 /** Priority level of ADC SPI interrupt */
-#define APP_CFG_ADC_SPI_INTR_PRIORITY 0x1
+#define APP_CFG_ADC_SPI_INTR_PRIORITY 0x3
 /** Priority level of FRAM SPI interrupt */
-#define APP_CFG_FRAM_SPI_INTR_PRIORITY 0x2
+#define APP_CFG_FRAM_SPI_INTR_PRIORITY 0x4
 /** Prioirty level of DREADY GPIO interrupt */
-#define APP_CFG_DREADY_INTR_PRIORITY 0x0
+#define APP_CFG_DREADY_INTR_PRIORITY 0x2
 /** Priority level of timer interrupt */
-#define APP_CFG_CF_TIMER_INTR_PRIORITY 0x3
+#define APP_CFG_CF_TIMER_INTR_PRIORITY 0x5
 /** Enable UART */
 #define APP_CFG_ENABLE_HOST_UART 1
 /** Enable Timer*/
@@ -51,7 +47,7 @@ extern "C" {
 /**  ADC SPI mode*/
 #define APP_CFG_ADC_SPI_MODE 3
 /** Priority level of ADC UART interrupt */
-#define APP_CFG_UART_INTR_PRIORITY 4
+#define APP_CFG_UART_INTR_PRIORITY 6
 /** sampling rate */
 #define APP_CFG_ADC_SAMPLING_RATE 8000
 /**
@@ -62,6 +58,10 @@ extern "C" {
 #define APP_CFG_ENABLE_DATAPATH 1
 /** default block size */
 #define APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE 1
+/** Maximum number of voltage channels */
+#define APP_CFG_MAX_NUM_VOLTAGE_CHANNELS 3
+/** Maximum number of current channels */
+#define APP_CFG_MAX_NUM_CURRENT_CHANNELS 4
 /** max number of channels per ADC */
 #define APP_CFG_MAX_NUM_CHANNELS_PER_ADC 7
 /** max delay in sample buffer.
@@ -71,6 +71,9 @@ extern "C" {
 #define APP_CFG_USE_SAMPLE_DELAY 1
 /** Enable use store timestamp of samples */
 #define APP_CFG_USE_TIMESTAMP 0
+
+/** Enable display samples onto the terminal */
+#define DISABLE_ASCII_OUT 1
 
 #ifdef __cplusplus
 }

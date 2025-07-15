@@ -92,6 +92,12 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
-        }
+        },
+        {
+            "label": "Echo MCU Name",
+            "type": "shell",
+            "command": "echo ${config:mcuName}, ${config:stm32Device}",
+            "problemMatcher": []
+          }
     ]
 }

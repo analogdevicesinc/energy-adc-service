@@ -3,9 +3,9 @@
 ******************************************************************************/
 #include "adc_datapath_cfg.h"
 #include "adc_service_interface.h"
-#include "message.h"
 #include "adi_evb.h"
 #include "app_cfg.h"
+#include "message.h"
 #include <string.h>
 
 /* Number of samples to buffer*/
@@ -13,6 +13,7 @@
 
 static uint8_t voltageSlots[APP_CFG_MAX_NUM_VOLTAGE_CHANNELS] = {3, 0};
 static uint8_t currentSlots[APP_CFG_MAX_NUM_CURRENT_CHANNELS] = {2, 1};
+
 static int32_t adcSamples[ADC_NUM_SAMPLES_REQUIRED];
 static volatile int32_t dready = 0;
 static volatile int32_t spiComplete = 0;
@@ -23,8 +24,6 @@ static void *hEvb;
 static void DreadyCallback(uint32_t port, uint32_t pin);
 static void SpiRxCallback(void);
 static void PrintOutput(int32_t *pSamples, int32_t numSamples);
-
-
 int main()
 {
     int32_t i;
@@ -37,7 +36,7 @@ int main()
     ADI_ADC_CONFIG *pAdcCfg = &pAdcsIf->adcCfg;
     int32_t numAdc;
     int32_t *pSamples = &adcSamples[0];
-    uint32_t channelMask = 0xF;
+    uint32_t channelMask = 0x7F;
 
     ADI_EVB_CONFIG *pEvbConfig = &evbConfig;
     pEvbConfig->spiConfig.pfAdeSpiRxCallback = SpiRxCallback;
@@ -45,14 +44,10 @@ int main()
     EvbInit(&hEvb, pEvbConfig);
 
     EvbInitMessageBuffer();
-
     printf("\n**************** ADC Service Sample Collection Example ******************\n");
-
 
     /* Create ADC Service */
     AdcIfCreateService(pAdcsIf);
-
-
     for (i = 0; i < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; i++)
     {
         pAdcsIf->adcBoardConfig.voltageSlots[i] = voltageSlots[i];
@@ -62,13 +57,13 @@ int main()
         pAdcsIf->adcBoardConfig.currentSlots[i] = currentSlots[i];
     }
     pAdcCfg->numSamplesInBlock = APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE;
+    numAdc = 1;
     pAdcCfg->adcType[0] = ADI_ADC_TYPE_ADEMA127;
     pAdcsIf->adcSamplingRate = APP_CFG_ADC_SAMPLING_RATE;
     pAdcsIf->clkIn = APP_CFG_ADC_MCLK;
     pAdcsIf->decimateBy2 = APP_CFG_ADC_DECIMATION_BY2;
     pAdcsIf->adcStreamMode = ADI_ADC_STREAM_MODE_NORM;
 
-    numAdc = 1;
     status = AdcIfInitService(pAdcsIf, numAdc, &pAdcsIf->adcCfg.adcType[0]);
     status = AdcIfStartCapture(pAdcsIf);
 
@@ -99,13 +94,13 @@ int main()
             }
         }
     }
-    
 #ifdef DISABLE_ASCII_OUT
     printf("Collected %d samples\n", numSamples);
     printf("Displaying first %d samples per channel:\n", numSamplesPerChannelToDisplay);
-    PrintOutput(pSamples, 10 * (APP_CFG_MAX_NUM_VOLTAGE_CHANNELS + APP_CFG_MAX_NUM_CURRENT_CHANNELS));
+    PrintOutput(pSamples, 10);
+    EvbFlushMessages();
 #else
-    // Send samples to host
+    /* Send samples to host */
     EvbHostUartTransmitAsync(hEvb, (uint8_t *)pSamples, numRequiredSamples * sizeof(int32_t));
 #endif
     /* Check whether data contains proper output*/
@@ -129,12 +124,12 @@ void PrintOutput(int32_t *pSamples, int32_t numSamples)
         // Print voltage channels
         for (int32_t j = 0; j < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; j++)
         {
-            printf("V%d:%d ", j, pSamples[voltageSlots[j]]);
+            printf("V%d:0x%04X ", j, pSamples[voltageSlots[j]]);
         }
         // Print current channels
         for (int32_t j = 0; j < APP_CFG_MAX_NUM_CURRENT_CHANNELS; j++)
         {
-            printf("I%d:%d ", j, pSamples[currentSlots[j]]);
+            printf("I%d:0x%04X ", j, pSamples[currentSlots[j]]);
         }
         // Move pointer to next sample set
         pSamples += (APP_CFG_MAX_NUM_VOLTAGE_CHANNELS + APP_CFG_MAX_NUM_CURRENT_CHANNELS);

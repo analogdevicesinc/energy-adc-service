@@ -97,13 +97,13 @@ typedef enum
 /** Bytes per sample */
 #define APP_CFG_BYTES_PER_SAMPLE sizeof(uint32_t) // For ADC resolution of 24-bits
 /** Prioirty level of DREADY GPIO interrupt */
-#define APP_CFG_DREADY_INTR_PRIORITY 0
+#define APP_CFG_DREADY_INTR_PRIORITY 2
 /** Priority level of ADC SPI interrupt */
-#define APP_CFG_ADC_SPI_INTR_PRIORITY 1
+#define APP_CFG_ADC_SPI_INTR_PRIORITY 3
 /** Priority level of FRAM SPI interrupt */
-#define APP_CFG_FRAM_SPI_INTR_PRIORITY 2
+#define APP_CFG_FRAM_SPI_INTR_PRIORITY 4
 /** Priority level of CF timer interrupt */
-#define APP_CFG_CF_TIMER_INTR_PRIORITY 3
+#define APP_CFG_CF_TIMER_INTR_PRIORITY 5
 /** Priority level of ADC UART interrupt */
 #define APP_CFG_UART_INTR_PRIORITY 4
 /** Priority level of UART interrupt */

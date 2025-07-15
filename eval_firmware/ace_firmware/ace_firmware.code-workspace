@@ -30,6 +30,10 @@
 			"path": "../../ade_registers/crc"
 		},
 		{
+			"name": "cli",
+			"path": "../../firmware_services/services/cli"
+		},
+		{
 			"name": "board_support_stm",
 			"path": "../../board_support/stm"
 		},
@@ -41,20 +45,46 @@
 			"name":"toolchain",
 			"path": "../../board_support/cmake"
 
+		},
+		{
+			"name": "HAL Drivers",
+			"path": "C:/STM32Cube/Repository/STM32Cube_FW_H5_V1.3.0/Drivers/STM32H5xx_HAL_Driver"
 		}
-	
 	],
 	"settings": {
 		"files.exclude": {
 			"**/test": true,
+			"**/nucleo_h563zi_master": true,
+			"**/crane_sieval": true,
+			"**/nucleo_h563zi_slave": true,
 			"**/Templates": true,
 			"**/_htmresc": true,
 			"**/**.html": true,
 			"**/**.chm": true,
+			"**/stm32h563zi": true,
+			"**/stm32h573zi_freertos": true,
+			"**/stm32h735ig": true,
 			"**/vscode": true,
-			"**/keil": true,
-			"**nucleo**": true,
-			"app_mcu_h7*": true,
+			"adc_example_freertos_config.c": true,
+			"adc_example_freertos.c": true,
+			"adc_example_ucomm.c": true,
+			"adc_example_test_cmd.c": true,
+			"frame_format_example.c": true,
+			"main_freertos.c": true,
+			"**/adi_prof_cfg.h": true,
+			"**/h7_mcu_board": true,
+			"adc_example_freertos.h": true,
+			"adc_example_ucomm.h": true,
+			"adc_example_freertos_config.h": true,
+			"**/freertos": true,
+			"**app_mcu*.code-workspace": true,
+			"**nucleo_*.code-workspace": true,
 		},
+		"stm32Device": "STM32H573",
+		"mcuName": "STM32H563ZITx",
+		"cmake.configureArgs": [
+			//Pass compile args to cmake here.
+			"-DSDK=C:/STM32Cube/Repository/STM32Cube_FW_H5_V1.3.0/Drivers/STM32H5xx_HAL_Driver",
+		],
 	}
 }

@@ -19,6 +19,7 @@
     over SPI interface. Refer to datasheets of the respective ADCs for details on the command and response protocols.
 
     These ADCs also supports daisy chaining of multiple ADCs. ADC Service also supports sending commands to each ADC and collect samples from each of them appropriately.
+
     The service expects the application to initialise and configures the following peripherals for correct functionality.
     - SPI is connected to ADCs. \n
       - SPI mode is 3. [clock polarity = 1, clock phase = 1]
@@ -106,7 +107,6 @@
     browse by selecting the "Modules" node. The main APIs to be used are as
     follows.
 
-
    @section Specifications Specifications
    Following section describes the memory usage of the ADC Service.
 
@@ -134,7 +134,6 @@
    generated from doxygen comments in the code
 
    @subsection ReleaseNotes Release notes
-    ADSW-ADC-Service.0.9.0_ReleaseNotes.pdf
     can be found in the in the docs folder.
 
    @section Support Technical or customer support

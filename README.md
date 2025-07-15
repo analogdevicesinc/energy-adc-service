@@ -1,8 +1,11 @@
-# ADC Service
+<p align="center">
+    <img src="docs/api_docs/diagrams/adi_logo.png" width="250" alt="ADI Logo" /><br>
+</p>
 
-## Introduction
+# Energy ADC Service
 
-ADC Service provides a set of APIs to communicate with ADI metrology ADCs and collect waveform samples. This release supports ADE9113, ADE9112, ADE9103, ADEMA124, and ADEMA127. These ADCs use a command and response protocol over the SPI interface. Refer to the datasheets of the respective ADCs and the [energy-ade-registers](https://github.com/analogdevicesinc/energy-ade-registers) repository for details on the command and response protocols.
+Energy ADC Service provides a set of APIs to communicate with ADI metrology ADCs and collect waveform samples.
+This release supports ADE9113, ADE9112, ADE9103, ADEMA124, and ADEMA127. These ADCs use a command and response protocol over the SPI interface. Refer to the datasheets of the respective ADCs and the [energy-ade-registers](https://github.com/analogdevicesinc/energy-ade-registers) repository for details on the command and response protocols.
 
 This repository contains source code for the service and example code demonstrating how to use the APIs. The examples use the following submodules for demonstrations:
 - [energy-ade-registers](https://github.com/analogdevicesinc/energy-ade-registers)
@@ -28,8 +31,6 @@ The [sample_read_example](examples) demonstrates how to call various APIs and in
 - Add sample delays to individual channels
 - Example code for tamper detection mode
 
-
-
 ## Directory Structure
 
 ```text
@@ -44,7 +45,6 @@ energy-adc-service/
 ├── docs/                # Release notes and API documentation
 ├── firmware_services/   # Submodule for CLI and other firmware services
 ```
-
 
 Refer to [integration_instructions.md](integration_instructions.md) for instructions on integrating the ADC Service into a new project.
 

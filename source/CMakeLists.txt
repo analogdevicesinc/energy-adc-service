@@ -7,6 +7,7 @@ project(adc_service C)
 
 set(ADC_SERVICE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 
+set(FW_SERVICES_DIR ${ADC_SERVICE_DIR}/firmware_services/services)
 
 if (NOT DEFINED ADE_REG_DIR)
   set(ADE_REG_DIR ${ADC_SERVICE_DIR}/ade_registers)
@@ -45,7 +46,6 @@ project(adc_service C)
 # Baremetal build
 # Add the executable
 add_library(adc_service ${SRC})
-
 #Provide include path of app_cfg to mathop      
 target_include_directories(adc_service PUBLIC ${INCLUDE})
 

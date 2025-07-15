@@ -10,13 +10,6 @@
 				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         },
-       {
-            "name": "Release",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            }
-        },
         {
             "name": "Debug",
             "inherits": "default",
@@ -25,25 +18,32 @@
             }
         },
         {
-            "name": "RelWithDbgInfo",
+            "name": "RelWithDebInfo",
             "inherits": "default",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDbgInfo"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
-        }
+        },
+        {
+            "name": "Release",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
     ],
     "buildPresets": [
-       {
-            "name": "Release",
-            "configurePreset": "Release"
-        },
         {
             "name": "Debug",
             "configurePreset": "Debug"
         },
         {
-            "name": "RelWithDbgInfo",
-            "configurePreset": "RelWithDbgInfo"
+            "name": "RelWithDebInfo",
+            "configurePreset": "RelWithDebInfo"
+        },
+        {
+            "name": "Release",
+            "configurePreset": "Release"
         }
     ]
 }
