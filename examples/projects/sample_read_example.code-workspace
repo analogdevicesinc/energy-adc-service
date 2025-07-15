@@ -1,0 +1,56 @@
+{
+	"folders": [
+		{
+			"name": "project",
+			"path": "."
+		},
+		{
+			"name":"example",
+			"path": ".."
+		},
+		{
+			"name": "adc_service_interface",
+			"path": "../../interface"
+		},
+		{
+			"name": "adc_service_include",
+			"path": "../../include"
+		},
+				{
+			"name": "adc_service_sources",
+			"path": "../../source"
+		},
+
+		{
+			"name": "crc",
+			"path": "../../ade_registers/crc"
+		},
+		{
+			"name": "board_support_stm",
+			"path": "../../board_support/stm"
+		},
+		{
+			"name": "board_support_generic",
+			"path": "../../board_support/generic"
+		},
+		{
+			"name":"toolchain",
+			"path": "../../board_support/cmake"
+
+		}
+	
+	],
+	"settings": {
+		"files.exclude": {
+			"**/test": true,
+			"**/Templates": true,
+			"**/_htmresc": true,
+			"**/**.html": true,
+			"**/**.chm": true,
+			"**/vscode": true,
+			"**/keil": true,
+			"**nucleo**": true,
+			"app_mcu_h7*": true,
+		},
+	}
+}
