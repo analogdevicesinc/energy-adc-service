@@ -18,10 +18,10 @@
             }
         },
         {
-            "name": "RelWithDebInfo",
+            "name": "RelWithDbgInfo",
             "inherits": "default",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+                "CMAKE_BUILD_TYPE": "RelWithDbgInfo"
             }
         },
         {
@@ -38,8 +38,8 @@
             "configurePreset": "Debug"
         },
         {
-            "name": "RelWithDebInfo",
-            "configurePreset": "RelWithDebInfo"
+            "name": "RelWithDbgInfo",
+            "configurePreset": "RelWithDbgInfo"
         },
         {
             "name": "Release",
