@@ -63,6 +63,10 @@ doxygen adc_service_doxy_config
 
 The documentation will be generated in the output directory specified in the Doxygen configuration.
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ## License
 
 This project is licensed under the [Apache 2.0 License](LICENSE).
