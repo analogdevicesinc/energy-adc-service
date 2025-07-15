@@ -74,6 +74,8 @@ extern "C" {
 
 /** Enable display samples onto the terminal */
 #define DISABLE_ASCII_OUT 1
+/** Enable HW CRC */
+#define APP_CFG_ENABLE_HW_CRC  1
 
 #ifdef __cplusplus
 }

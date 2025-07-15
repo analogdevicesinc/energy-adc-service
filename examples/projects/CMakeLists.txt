@@ -11,6 +11,8 @@ set(ADCSIF_DIR "${PROJECT_ROOT_DIR}/interface" CACHE PATH "Directory for ADC ser
 set(ADCS_LIB_DIR "${PROJECT_ROOT_DIR}/source" CACHE PATH "Directory for ADC service library")
 set(CONFIG_DIR "${CMAKE_CURRENT_LIST_DIR}/config" CACHE PATH "Configuration directory")
 
+option(USE_CRC "Compile CRC sources" ON)
+option(USE_HW_CRC "HW Crc Support" ON)
 # Build options
 set(EVB "app_mcu_h5" CACHE STRING "Name of evaluation board")
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
