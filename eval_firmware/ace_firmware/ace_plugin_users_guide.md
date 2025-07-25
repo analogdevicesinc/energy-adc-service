@@ -54,7 +54,7 @@
 
 ## 3. Configure serial communication settings
 
-1. Double-click the ADEMA127 ACE plugin (.acezip) to open ACE.
+1. Open ACE.
 2. Click 'Add Hardware'.
 3. Go to 'Serial Ports' and click '+' to add:
    - Number: Port number of USB to UART bridge
@@ -74,9 +74,8 @@
 
 ### A. Register Access
 
-1. Click `initialise_adc` to initialize ADC with default settings.
-2. To change global attributes, press `initialise_adc` again.
-3. Read/write ADEMA127 registers in 'Proceed to Memory Map':
+1. Click `apply_settings` button to initialize ADC with recommended settings.
+2. Read/write ADEMA127 registers in 'Proceed to Memory Map':
    ![Memory Map](./ace_plugin_images/adema127_memory_map.png)
 
 ### B. Sample Collection & Analysis
@@ -93,7 +92,7 @@
 ![Chip View](./ace_plugin_images/ADEMA127.png)
 
 - **Chan Selector**: Choose one of 7 channels.
-- **Gain/Offset/Shift**: Enter values for each channel.
+- **Gain/Offset/Shift/XtGain/XtAggressor**: Enter values for each channel.
 - **Datapath Config**: Enable/disable options via checkboxes.
 - **Scale**: Set scale in mV for analysis display.
 - **Datarate Configuration**: Configure data rate using dropdowns; click 'Apply Changes'.
@@ -110,7 +109,6 @@
 - `firmware_version`: ADC service version
 - `build_id`: Git commit ID
 - `board_type`: Type of ADC board (default: EVAL-ADEMA127KTZ)
-- `hpf_cutoff_frequency`: Sets filter coefficients
 - `choose_settings`: Load recommended/default settings
 - `apply_settings`: Apply chosen settings
 - `start-tamper-detect` / `stop-tamper-detect`: Enable/disable Tamper Detection Mode
