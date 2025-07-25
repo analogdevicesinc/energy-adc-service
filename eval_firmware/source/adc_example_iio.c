@@ -149,6 +149,8 @@ ADC_EXAMPLE_STATUS InitServices(void)
     ADI_CLI_STATUS cliStatus = ADI_CLI_STATUS_SUCCESS;
     uint8_t numAdc = 1;
     uint32_t i;
+    uint32_t totalSampleBlockSize;
+    uint32_t numMaxBlocks;
     pExample->pAdcIf = &adcIf;
     pExample->pCliInfo = &cliInfo;
     pExample->pXmlDescBuffer = &xmlDescBuffer[0];
@@ -221,6 +223,12 @@ ADC_EXAMPLE_STATUS InitServices(void)
             {
                 status = ADC_EXAMPLE_STATUS_ADC_INIT_FAILED;
             }
+            totalSampleBlockSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
+                                   pExample->pAdcIf->runInfo.totalChannels;
+            numMaxBlocks = ADC_EXM_MAX_SAMPLES_TO_STORE / totalSampleBlockSize;
+            pExample->samplesBuffer.pCircBuff->nSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
+                                                       pExample->pAdcIf->runInfo.totalChannels *
+                                                       numMaxBlocks * APP_CFG_BYTES_PER_SAMPLE;
         }
         if (status == 0)
         {
@@ -721,27 +729,20 @@ ADC_EXAMPLE_STATUS ProcessCommand(void)
 
 void ProcessInitCommand(ADC_EXAMPLE *pExample)
 {
-    uint32_t totalSampleBlockSize;
-    uint32_t numMaxBlocks;
     for (int i = 0; i < pExample->numAdc; i++)
     {
         // FIX ME: How to configure different adcTypes in IIO?
         pExample->adcTypes[i] = (ADI_ADC_TYPE)pExample->adcVariant;
     }
-    pExample->samplesBuffer.pCircBuff->nReadIndex = 0;
-    pExample->samplesBuffer.pCircBuff->nWriteIndex = 0;
     AdcIfInitService(pExample->pAdcIf, pExample->numAdc, &pExample->adcTypes[0]);
-    totalSampleBlockSize =
-        pExample->pAdcIf->adcCfg.numSamplesInBlock * pExample->pAdcIf->runInfo.totalChannels;
-    numMaxBlocks = ADC_EXM_MAX_SAMPLES_TO_STORE / totalSampleBlockSize;
-    pExample->samplesBuffer.pCircBuff->nSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
-                                               pExample->pAdcIf->runInfo.totalChannels *
-                                               numMaxBlocks * APP_CFG_BYTES_PER_SAMPLE;
 }
 
 void ApplySettings(ADC_EXAMPLE *pExample)
 {
-
+    uint32_t totalSampleBlockSize;
+    uint32_t numMaxBlocks;
+    pExample->samplesBuffer.pCircBuff->nReadIndex = 0;
+    pExample->samplesBuffer.pCircBuff->nWriteIndex = 0;
     if (pExample->settings == ADC_EXAMPLE_RECOMMENDED_SETTINGS)
     {
         ProcessInitCommand(pExample);
@@ -750,6 +751,12 @@ void ApplySettings(ADC_EXAMPLE *pExample)
     {
         ResetAdc();
     }
+    totalSampleBlockSize =
+        pExample->pAdcIf->adcCfg.numSamplesInBlock * pExample->pAdcIf->runInfo.totalChannels;
+    numMaxBlocks = ADC_EXM_MAX_SAMPLES_TO_STORE / totalSampleBlockSize;
+    pExample->samplesBuffer.pCircBuff->nSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
+                                               pExample->pAdcIf->runInfo.totalChannels *
+                                               numMaxBlocks * APP_CFG_BYTES_PER_SAMPLE;
 }
 
 void ChooseSettings(char *pSrc)

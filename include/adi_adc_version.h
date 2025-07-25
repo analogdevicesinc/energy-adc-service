@@ -23,17 +23,17 @@ extern "C" {
 /** Product name */
 #define ADI_ADC_PRODUCT_NAME "ADC Service"
 /** Major revision*/
-#define ADI_ADC_MAJOR_REVISION 0
+#define ADI_ADC_MAJOR_REVISION 1
 /** Minor revision*/
-#define ADI_ADC_MINOR_REVISION 9
+#define ADI_ADC_MINOR_REVISION 0
 /** Patch number*/
 #define ADI_ADC_PATCH_NUMBER 0
 /** ID to differentiate different builds of same release.
  *  Updated through  automation*/
-#define ADI_ADC_BUILD_HASH 0xd66955d42
+#define ADI_ADC_BUILD_HASH 0x4adffc920
 /** Build Number.
  *  Updated through  automation*/
-#define ADI_ADC_BUILD_NUM 2507150
+#define ADI_ADC_BUILD_NUM 2507251
 
 /** Release version */
 #define ADI_ADC_VERSION                                                                            \

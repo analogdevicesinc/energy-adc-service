@@ -36,6 +36,10 @@
    - Plug the debugger into your PC. The PC should detect the board as an STLINK port.
 
 3. **Flash the Hex File:**
+   - Double-click the ADEMA127 ACE plugin (.acezip) to open ACE. The plugin is installed in C:\ProgramData\Analog Devices\ACE\Plugins\Board.ADEMA127.x.x.x-dev.x
+    unless you have set the plugins installation folder to a different one during ACE installation.
+   - Firmware is located at content\ace_firmware_gcc.hex
+   
    - Use the STM32CubeProgrammer GUI to flash the `.hex` file.
    - Alternatively, use the command line to load firmware using STM32CubeProgrammer:
      ```sh

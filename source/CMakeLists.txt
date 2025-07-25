@@ -28,11 +28,11 @@ set(SRC # ADC Service sources
 )
 
 set(INCLUDE # ADC application includes
-			${ADC_SERVICE_DIR}/include
-			${ADE_REG_DIR}/adema12x/include
-			${ADE_REG_DIR}/include
-			${ADE_REG_DIR}/ade91xx/include
-)
+    ${ADC_SERVICE_DIR}/include
+    ${ADE_REG_DIR}/adema12x/include
+    ${ADE_REG_DIR}/include
+    ${ADE_REG_DIR}/ade91xx/include
+  )
 
 set_source_files_properties(
   ${PROJECT_ROOT_DIR}/source/adi_adc.c

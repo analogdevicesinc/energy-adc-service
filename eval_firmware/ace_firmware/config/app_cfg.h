@@ -129,9 +129,9 @@ typedef enum
     Valid delays: 0 (no delay), 1, 2, 3, 4 */
 #define APP_CFG_MAX_SAMPLE_DELAY 4
 /** Enable use of integer sample delay */
-#define APP_CFG_USE_SAMPLE_DELAY 0
+#define APP_CFG_USE_SAMPLE_DELAY 1
 /** Enable use store timestamp of samples */
-#define APP_CFG_USE_TIMESTAMP 1
+#define APP_CFG_USE_TIMESTAMP 0
 
 /** Maximum number of samples to store in example
  */

@@ -65,6 +65,9 @@ extern "C" {
  */
 #define ADEMA12x_ADC_FULL_SCALE_CODE 0x599999
 
+/** The full-scale code value for the ADE91XX ADC. */
+#define ADE91XX_ADC_FULL_SCALE_CODE 0x7FFFFF
+
 #if (APP_CFG_USE_TIMESTAMP == 1)
 /** Size of timestamp buffer. */
 #define ADI_ADC_TIMESTAMP_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_BLOCK_SIZE * APP_CFG_MAX_NUM_ADC)
@@ -667,11 +670,9 @@ ADI_ADC_STATUS adi_adc_GetLastRegister(ADI_ADC_HANDLE hAdc, int8_t adcIdx, uint8
  */
 
 /**
- * @brief This function issues sample read command and also collects the response of previous
- * command. Once the response is collected, CRC of the received frame is verified against the
- * expected value. Note that the function is non-blocking. #ADI_ADC_CONFIG.pfCallback will be
- * invoked when a block of samples are ready. Use #adi_adc_ReadBlock function to read the collected
- * samples.
+ * @brief Issues a sample read command and collects the response of the previous command.
+ * This function is used to initiate the sample collection process and receive response for
+ * the previously issued command.
  * @param[in] hAdc   - ADC Service handle
  * @param[in] timestamp - Timestamp associated with each sample.
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -682,7 +683,10 @@ ADI_ADC_STATUS adi_adc_GetLastRegister(ADI_ADC_HANDLE hAdc, int8_t adcIdx, uint8
 ADI_ADC_STATUS adi_adc_CollectSamples(ADI_ADC_HANDLE hAdc, uint32_t timestamp);
 
 /**
- * @brief Function to validate the samples.
+ * @brief Function to validate the samples. It performs CRC validation on received data frames to
+ * ensure integrity. Once a complete block of samples has been collected, the callback registered in
+ * #ADI_ADC_CONFIG.pfCallback is invoked. To read the collected samples, call #adi_adc_ReadBlock
+ * from application.
  * @param[in] hAdc   - ADC Service handle
  *
  */
@@ -690,8 +694,10 @@ ADI_ADC_STATUS adi_adc_ValidateSamples(ADI_ADC_HANDLE hAdc);
 
 /**
  * @brief Function to read a block of samples collected by #adi_adc_CollectSamples.
- *        The number of samples that can be collected can be controlled by
- * #ADI_ADC_CONFIG.numSamplesInBlock
+ * This function is used to retrieve a complete block of ADC samples that were collected
+ * via #adi_adc_CollectSamples. It should be called only after the
+ * user callback (set via #ADI_ADC_CONFIG.pfCallback) indicates that a block of data is ready.
+ * The number of samples collected per block is determined by #ADI_ADC_CONFIG.numSamplesInBlock.
  *
  * @param[in] hAdc   - ADC Service handle
  * @param[out] pBuffer          - Pointer to buffer to collect the data.
@@ -899,6 +905,39 @@ ADI_ADC_STATUS adi_adcutil_PopulateSamplingRate(uint32_t clkIn, uint32_t samplin
  */
 uint32_t adi_adcutil_ExtractChannel(int32_t *pSrc, uint32_t numSamples, uint32_t numChannels,
                                     uint32_t channelMask, int32_t *pDst);
+
+/**
+ * @brief Converts raw ADC codes to floating-point sample values.
+ *
+ * This function takes raw ADC codes from the input buffer and scales them
+ * down by corresponding ADC Full Scale Code to floating-point sample values,
+ * which are stored in the output buffer. The number of frames to process is
+ * specified by the caller.
+ *
+ * @param[in]  hAdc       Handle to ADC Service Instance.
+ * @param[in]  pInBuff    Pointer to the input buffer containing raw ADC codes.
+ * @param[out] pOutBuff   Pointer to the output buffer where converted
+ *                        floating-point sample values will be stored.
+ * @param[in]  numFrames  Number of frames to process.
+ *
+ * @return ADI_ADC_STATUS Status of the operation. Returns success or an
+ *                        appropriate error code.
+ */
+ADI_ADC_STATUS adi_adc_ConvertCodesToSamples(ADI_ADC_HANDLE hAdc, int32_t *pInBuff, float *pOutBuff,
+                                             uint32_t numFrames);
+
+/**
+ * @brief Function to get the number of channels per ADC.
+ *
+ * This function retrieves the number of channels per ADC and puts them in pNumChannels.
+ *
+ * @param[in]  hAdc         - ADC Service handle.
+ * @param[out] pNumChannels - Pointer to a buffer to store the number of channels.
+ *
+ * @return  #ADI_ADC_STATUS_SUCCESS \n
+ *          #ADI_ADC_STATUS_NULL_PTR \n
+ */
+ADI_ADC_STATUS adi_adc_GetChannelsPerAdc(ADI_ADC_HANDLE hAdc, uint8_t *pNumChannels);
 
 /** @} */
 

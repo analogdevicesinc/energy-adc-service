@@ -224,8 +224,6 @@ ADI_ADC_STATUS adi_adc_SetChannelParams(ADI_ADC_HANDLE hAdc,
  * @param[in] numChannel - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pDspRegisters - Pointer to ADC DSP channel parameters.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -277,8 +275,6 @@ ADI_ADC_STATUS adi_adc_SetDatapathParams(ADI_ADC_HANDLE hAdc,
  * @param[in] numChannel - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pDspRegisters - Pointer to ADC DSP channel parameters.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -369,8 +365,6 @@ ADI_ADC_STATUS adi_adc_SetDatapathAlpha(ADI_ADC_HANDLE hAdc, uint8_t *pAlphaVal,
  * @param[in] hAdc   - ADC Service handle
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pAlphaVal - Pointer to channel datapath alpha values.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -392,8 +386,6 @@ ADI_ADC_STATUS adi_adc_GetDatapathAlpha(ADI_ADC_HANDLE hAdc, int8_t adcIdx, uint
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pPhOffsetVal - Phase offset values of all channels.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -659,8 +651,6 @@ ADI_ADC_STATUS adi_adc_SetShift(ADI_ADC_HANDLE hAdc, uint8_t *pShiftVal, uint8_t
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pGainVal - Pointer to gain values of all channels.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -683,8 +673,6 @@ ADI_ADC_STATUS adi_adc_GetChannelGain(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx, in
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pXtAggrVal - Pointer to XT Aggressor values of all channels.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -707,8 +695,6 @@ ADI_ADC_STATUS adi_adc_GetChannelXtAggressor(ADI_ADC_HANDLE hAdc, uint8_t *pChan
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pXtGainVal - Pointer to XT Gain values of all channels.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -731,8 +717,6 @@ ADI_ADC_STATUS adi_adc_GetChannelXtGain(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx, 
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pOffsetVal - Offset values of all channels.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -755,8 +739,6 @@ ADI_ADC_STATUS adi_adc_GetChannelOffset(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx, 
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pShiftVal - Pointer to shift values of all channels.
  *
  * @return  #ADI_ADC_STATUS_SUCCESS \n
@@ -800,8 +782,6 @@ ADI_ADC_STATUS adi_adc_GetDatapathConfig(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx,
  * @param[in] numChan - Number of channel registers to be written.
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[in] pCoeffs - Array of pointers to coefficients. Each element of array points to
  * coefficients of one channel in order [B0, B1, A1].
  *
@@ -823,8 +803,6 @@ ADI_ADC_STATUS adi_adc_GetScfCoeff(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx, uint8
  * @param[in] hAdc  	 - ADC Service handle
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
  *                     This value ranges from 0 to numAdc-1.
- *                     This value will be -1 if command has to be set to
- *                     all ADC's.
  * @param[out] pNumCoeffs - Pointer to numerator coefficients in order [B0, B1, B2].
  * @param[out] pDenCoeffs - Pointer to denominator coefficients in order [A0, A1, A2].
  *
@@ -844,6 +822,7 @@ ADI_ADC_STATUS adi_adc_GetHpfCoeff(ADI_ADC_HANDLE hAdc, int8_t adcIdx, float *pN
  *
  * @param[in] hAdc - ADC Service handle
  * @param[in] adcIdx - ADC Index to which the command has to be sent.
+ *                     This value ranges from 0 to numAdc-1.
  * @param[out] pDecimationRate - Pointer to the decimation rate.
  * @param[out] pClkPreScaler - Pointer to the clock prescaler.
  * @param[out] pDecimateX2 - Pointer to the decimate by 2 bit configuration.
@@ -864,6 +843,7 @@ ADI_ADC_STATUS adi_adc_GetDataRate(ADI_ADC_HANDLE hAdc, int8_t adcIdx, uint8_t *
  *
  * @param[in]  hAdc      Handle to the ADC instance.
  * @param[in]  adcIdx    Index of the ADC whose LPF coefficients are to be retrieved.
+ *                     This value ranges from 0 to numAdc-1.
  * @param[out] pCoeffs   Pointer to a float array to store the retrieved LPF coefficients.
  *
  * @return ADI_ADC_STATUS_SUCCESS if successful, error code otherwise.
@@ -877,7 +857,8 @@ ADI_ADC_STATUS adi_adc_GetLpfCoeff(ADI_ADC_HANDLE hAdc, int8_t adcIdx, float *pC
  * @param[in]  pChanIdx   Pointer to an array of channel indices to retrieve coefficients for.
  * @param[in]  numChan    Number of channels to read.
  * @param[in]  adcIdx     Index of the ADC instance.
- * @param[out] pCoeffs    Array of float pointers to store the retrieved compensation coefficients
+ * @param[out] pCoeffs    Array of float pointers to store the retrieved compensation coefficients.
+ *                     This value ranges from 0 to numAdc-1.
  * per channel.
  *
  * @return ADI_ADC_STATUS_SUCCESS if successful, error code otherwise.

@@ -46,9 +46,9 @@ extern "C" {
 #define APP_CFG_ADC_CMI 0x33
 
 /**
- * Gain setting for the ADC.
- * 0 - 1
- * 1 - 2
+ * Gain setting for the ADC. Sets ADC_GAIN register.
+ * - To set 1x gain for all channels, use 0x00.
+ * - To set 2x gain for all channels, use 0x7F.
  */
 #define APP_CFG_ADC_GAIN 0x0
 

@@ -233,6 +233,8 @@ typedef struct
     int32_t buffer[ADI_ADC_DELAY_BUFFER_SIZE];
     /** Write index. */
     uint16_t writeIdx;
+    /** Read index. */
+    uint16_t readIdx;
 } ADI_ADC_DELAY_BUFFER;
 
 /**

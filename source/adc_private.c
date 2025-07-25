@@ -77,6 +77,15 @@ static ADI_ADC_STATUS UpdatesAfterFramesRxvd(ADI_ADC_INFO *pInfo);
  */
 static ADI_ADC_STATUS FrameCrcValidate(ADI_ADC_INFO *pInfo, volatile uint8_t *pRxFrame);
 
+/**
+ * @brief Get delayed sample from delay buffer
+ * @param[in]  pChBuf	- Pointer to the delay structure.
+ * @param[in]  newSample	- New sample to store.
+ * @param[out]  pOutSample	- output sample.
+ *
+ */
+static void GetDelayedSample(ADI_ADC_DELAY_BUFFER *pChBuf, int32_t newSample, int32_t *pOutSample);
+
 ADI_ADC_STATUS AdcAssembleNopAllAdc(ADI_ADC_INFO *pInfo, uint8_t **pTxFramePtr)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
@@ -834,21 +843,20 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
     uint8_t globalCh = 0;
     uint8_t chIdx = 0;
     ADI_ADC_DELAY_BUFFER *pChBuf;
-    uint16_t readIdx;
-    uint8_t integerSampleDelay = 0;
 
 #if (APP_CFG_USE_TIMESTAMP == 1)
     uint32_t *pTimestamp;
     uint8_t timestampCnt = 0;
     memset(pInfo->runData.timestamp, 0x0, sizeof(pInfo->runData.timestamp));
 #endif
-    memset(pAdcStatusOutput, 0x0, (sizeof(ADI_ADC_STATUS_OUTPUT) * APP_CFG_MAX_NUM_ADC));
+    memset(pAdcStatusOutput, 0x0, sizeof(ADI_ADC_STATUS_OUTPUT) * APP_CFG_MAX_NUM_ADC);
     memset(pInfo->sampleLinearBuf, 0x0, sizeof(pInfo->sampleLinearBuf));
+
     if (pInfo->blockReady == 1)
     {
         pInfo->blockReady = 0;
-
         adcStatus = ADI_ADC_STATUS_SUCCESS;
+
         for (sampleIdx = 0; sampleIdx < numSamplesInBlock; sampleIdx++)
         {
             cntPrev = 0;
@@ -858,29 +866,24 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
 #if (APP_CFG_USE_TIMESTAMP == 1)
             pTimestamp = &pRxBuffer->timestamp[pRxBuffer->frameReadIdx];
 #endif
+
             for (adcIdx = 0; adcIdx < numAdc; adcIdx++)
             {
                 samplesPerFrame = pInfo->typeConfig[adcIdx].samplesPerFrame;
+
                 if (pError[adcIdx] == 0)
                 {
                     CopySamples(pInfo->sampleLinearBuf, pRxFramesBuff, samplesPerFrame);
+
                     for (chIdx = 0; chIdx < samplesPerFrame; chIdx++)
                     {
                         globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + chIdx;
                         pChBuf = &pInfo->channelDelayBuffers[globalCh];
-                        integerSampleDelay = pInfo->adcCfg.integerSampleDelay[globalCh];
-                        // Store sample to circular buffer
-                        pChBuf->buffer[pChBuf->writeIdx] = pInfo->sampleLinearBuf[chIdx];
 
-                        // Calculate read index with delay
-                        readIdx =
-                            (pChBuf->writeIdx + ADI_ADC_DELAY_BUFFER_SIZE - integerSampleDelay) %
-                            ADI_ADC_DELAY_BUFFER_SIZE;
-                        // Copy to output buffer
-                        pBuffer[cnt + chIdx] = pChBuf->buffer[readIdx];
-                        // Update write index
-                        pChBuf->writeIdx = (pChBuf->writeIdx + 1) % ADI_ADC_DELAY_BUFFER_SIZE;
+                        GetDelayedSample(pChBuf, pInfo->sampleLinearBuf[chIdx],
+                                         &pBuffer[cnt + chIdx]);
                     }
+
                     memcpy(&pInfo->prevSamples[cntPrev], pBuffer,
                            samplesPerFrame * sizeof(int32_t));
                 }
@@ -889,6 +892,7 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
                     memcpy(&pBuffer[cnt], &pInfo->prevSamples[cntPrev],
                            samplesPerFrame * sizeof(int32_t));
                 }
+
                 /* Copy the ADC STATUS0-2 from the last frame of each ADC. */
                 if (sampleIdx == (numSamplesInBlock - 1))
                 {
@@ -904,6 +908,7 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
                 cntPrev += samplesPerFrame;
                 pRxFramesBuff += pInfo->typeConfig[adcIdx].frameLength;
             }
+
             UpdateFrameReadIdx(pInfo);
         }
     }
@@ -918,6 +923,7 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     uint8_t globalCh;
     int8_t adcIdx;
+    ADI_ADC_DELAY_BUFFER *pChBuf;
 
     for (i = 0; i < numChan; i++)
     {
@@ -936,12 +942,24 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
                     {
                         globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
                         pInfo->adcCfg.integerSampleDelay[globalCh] = pIntegerDelay[i];
+
+                        // Update readIdx based on current writeIdx and delay
+                        pChBuf = &pInfo->channelDelayBuffers[globalCh];
+                        pChBuf->readIdx =
+                            (pChBuf->writeIdx + ADI_ADC_DELAY_BUFFER_SIZE - pIntegerDelay[i]) %
+                            ADI_ADC_DELAY_BUFFER_SIZE;
                     }
                 }
                 else
                 {
                     globalCh = adcNum * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
                     pInfo->adcCfg.integerSampleDelay[globalCh] = pIntegerDelay[i];
+
+                    // Update readIdx based on current writeIdx and delay
+                    pChBuf = &pInfo->channelDelayBuffers[globalCh];
+                    pChBuf->readIdx =
+                        (pChBuf->writeIdx + ADI_ADC_DELAY_BUFFER_SIZE - pIntegerDelay[i]) %
+                        ADI_ADC_DELAY_BUFFER_SIZE;
                 }
             }
         }
@@ -1035,6 +1053,25 @@ static uint8_t GetAdcChannelLimit(ADI_ADC_TYPE adcType)
     }
 
     return numCh;
+}
+
+static void GetDelayedSample(ADI_ADC_DELAY_BUFFER *pChBuf, int32_t newSample, int32_t *pOutSample)
+{
+    // Store the new sample in the circular buffer
+    pChBuf->buffer[pChBuf->writeIdx] = newSample;
+
+    // Read the delayed sample
+    *pOutSample = pChBuf->buffer[pChBuf->readIdx];
+
+    // Increment and wrap readIdx
+    pChBuf->readIdx++;
+    if (pChBuf->readIdx >= ADI_ADC_DELAY_BUFFER_SIZE)
+        pChBuf->readIdx = 0;
+
+    // Increment and wrap writeIdx
+    pChBuf->writeIdx++;
+    if (pChBuf->writeIdx >= ADI_ADC_DELAY_BUFFER_SIZE)
+        pChBuf->writeIdx = 0;
 }
 
 /**
