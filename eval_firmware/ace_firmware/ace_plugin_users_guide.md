@@ -15,7 +15,6 @@
    - [ACE Download](https://www.analog.com/ace)
    - Plugins: Board.ADEMA127, Chip.ADEMA127
    - See [ACE documentation](https://wiki.analog.com/resources/tools-software/ace) and [QuickStart](https://wiki.analog.com/resources/tools-software/ace/userguide/quickstart).
-   - Pre-release plugins (ACEZIP) via [myAnalog](https://my.analog.com) (contact ADI).
 
 4. **Recommended Versions**
 
@@ -63,9 +62,9 @@
    - Protocol: IIO
 4. Click 'Ok'.
 5. Reset the board
-2. "EVAL_ADEMA127 Unverified" should appear in ACE within 3 seconds.
+6. "EVAL_ADEMA127" should appear in ACE within 3 seconds.
    - If not, click 'Refresh attached hardware' and wait up to 3 seconds.
-3. Double-click the device to open the EVAL_ADEMA127 window, then double-click 'ADEMA127' to access the plugin.
+7. Double-click the device to open the EVAL_ADEMA127 window, then double-click 'ADEMA127' to access the plugin.
 
 
 ---
