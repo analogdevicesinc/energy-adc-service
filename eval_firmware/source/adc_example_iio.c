@@ -80,7 +80,7 @@ static char *pAdcExampleSettings[] = {"recommended", "default_adema127"};
 /** Uart Info */
 int32_t uartInfo;
 static Args args;
-
+static ADC_EXAMPLE_SETTINGS_TYPE settings;
 /** Macro indicating the end of the array. */
 #define END_ATTRIBUTES_ARRAY                                                                       \
     {                                                                                              \
@@ -552,7 +552,7 @@ int IIoAttrGet(int32_t attrId, int32_t *pChannel, char *pDst)
         sprintf(pDst, "%.5f", pExample->adcChanScale[*pChannel]);
         break;
     case ADC_EXAMPLE_ATTR_ID_CHOOSE_SETTINGS:
-        sprintf(pDst, "%s", pExample->pExampleSettings);
+        sprintf(pDst, "%s", pAdcExampleSettings[pExample->settings]);
         break;
     case ADC_EXAMPLE_ATTR_ID_TAMPER_CNT:
         sprintf(pDst, "%ld", pAdcIf->tamperCnt);
@@ -775,8 +775,7 @@ void ChooseSettings(char *pSrc)
             break;
         }
     }
-    pExample->pExampleSettings = pTrimmedSrc;
-    pExample->settings = (ADC_EXAMPLE_SETTINGS_TYPE)val;
+    pExample->settings = val;
 }
 
 void SetChanGainAttr(char *pBuf, uint8_t *pChanIdx)

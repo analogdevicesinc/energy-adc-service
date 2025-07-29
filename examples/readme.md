@@ -4,7 +4,7 @@ The example provided demonstrates how ADC samples can be collected using ADC ser
 
 ## Hardware Setup and Connections
 
-Connect the STM32H573 APP MCU board to the ADEMA127 IEC 3-Phase Meter board using the on-board connector.
+Connect the STM32H573 APP MCU board to the EVAL-ADEMA127KTZ using the on-board connector.
 
 ## Static Configuration
 
