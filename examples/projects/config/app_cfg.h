@@ -56,26 +56,34 @@ extern "C" {
 #define APP_CFG_QUANTIZATION_NOISE 44
 /** Enable Datapath */
 #define APP_CFG_ENABLE_DATAPATH 1
+/** max num adc */
+#define APP_CFG_MAX_NUM_ADC 4
+/** max block size */
+#define APP_CFG_MAX_SAMPLE_BLOCK_SIZE 4
 /** default block size */
 #define APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE 1
 /** Maximum number of voltage channels */
 #define APP_CFG_MAX_NUM_VOLTAGE_CHANNELS 3
 /** Maximum number of current channels */
 #define APP_CFG_MAX_NUM_CURRENT_CHANNELS 4
+/** max number of channels */
+#define APP_CFG_MAX_NUM_CHANNELS 28
 /** max number of channels per ADC */
 #define APP_CFG_MAX_NUM_CHANNELS_PER_ADC 7
 /** max delay in sample buffer.
     Valid delays: 0 (no delay), 1, 2, 3, 4 */
 #define APP_CFG_MAX_SAMPLE_DELAY 4
 /** Enable use of integer sample delay */
-#define APP_CFG_USE_SAMPLE_DELAY 0
+#define APP_CFG_USE_SAMPLE_DELAY
+/** Size of sample delay buffer. */
+#define APP_CFG_DELAY_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_DELAY + 1)
 /** Enable use store timestamp of samples */
 #define APP_CFG_USE_TIMESTAMP 0
 
 /** Enable display samples onto the terminal */
 #define DISABLE_ASCII_OUT 1
 /** Enable HW CRC */
-#define APP_CFG_ENABLE_HW_CRC  1
+#define APP_CFG_ENABLE_HW_CRC 1
 
 #ifdef __cplusplus
 }

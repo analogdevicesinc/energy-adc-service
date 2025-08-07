@@ -77,12 +77,37 @@ static ADI_ADC_STATUS UpdatesAfterFramesRxvd(ADI_ADC_INFO *pInfo);
  */
 static ADI_ADC_STATUS FrameCrcValidate(ADI_ADC_INFO *pInfo, volatile uint8_t *pRxFrame);
 
+/**
+ * @brief Get delayed sample from delay buffer
+ * @param[in]  pInfo	- Pointer to the ADC info structure.
+ * @param[in]  pChBuf	- Pointer to the delay structure.
+ * @param[in]  newSample	- New sample to store.
+ * @param[out]  pOutSample	- output sample.
+ *
+ */
+static void GetDelayedSample(ADI_ADC_INFO *pInfo, ADI_ADC_DELAY_BUFFER *pChBuf, int32_t newSample,
+                             int32_t *pOutSample);
+
+/**
+ * @brief Store Datapath shift
+ *
+ */
+#define DATAPATH_SHIFT(pInfo, adcIdx, chIdx)                                                       \
+    ((pInfo)->pDatapathShift[(adcIdx) * (pInfo)->maxNumChannel + (chIdx)]);
+
+/**
+ * @brief Store Datapath SCF Enable
+ *
+ */
+#define DATAPATH_SCF_EN(pInfo, adcIdx, chIdx)                                                      \
+    ((pInfo)->pDatapathScfEn[(adcIdx) * (pInfo)->maxNumChannel + (chIdx)]);
+
 ADI_ADC_STATUS AdcAssembleNopAllAdc(ADI_ADC_INFO *pInfo, uint8_t **pTxFramePtr)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     uint32_t adcIdx = 0;
     uint8_t numAdc = pInfo->adcCfg.numAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->pTypeConfig[0];
 
     /* Assemble the transmit command for ADC data */
     for (adcIdx = 0; adcIdx < numAdc; adcIdx++)
@@ -115,7 +140,7 @@ volatile uint8_t *GetAdcRxWriteFrame(ADI_ADC_INFO *pInfo)
 {
     volatile ADI_ADC_RX_BUFFER *pRxBuffer = &pInfo->rxBuffer;
     int32_t writeIdx = pRxBuffer->writeIdx;
-    volatile uint8_t *pRxFrame = &pRxBuffer->adcRxFrames[writeIdx];
+    volatile uint8_t *pRxFrame = &pRxBuffer->pAdcRxFrames[writeIdx];
 
     return pRxFrame;
 }
@@ -165,13 +190,13 @@ ADI_ADC_STATUS FrameCrcValidate(ADI_ADC_INFO *pInfo, volatile uint8_t *pRxFrame)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int32_t crcStatus = 0;
-    ADC_TYPE_CONFIG *pTypConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypConfig = &pInfo->pTypeConfig[0];
     uint32_t crc;
     ADI_ADC_RX_BUFFER *pRxBuffer = &pInfo->rxBuffer;
-    uint8_t *pError = &pRxBuffer->error[pRxBuffer->frameWriteIdx];
+    uint8_t *pError = &pRxBuffer->pError[pRxBuffer->frameWriteIdx];
     uint8_t numAdc = pInfo->adcCfg.numAdc;
     uint32_t frameOffset = 0;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->pTypeConfig[0];
     uint8_t frameLength;
     volatile uint8_t *pFrameStart;
 
@@ -211,7 +236,7 @@ static uint32_t CheckCRCStatus(ADI_ADC_INFO *pInfo, int32_t numAdc)
     int32_t i;
     uint32_t crcStatus = 0;
     ADI_ADC_RX_BUFFER *pRxBuffer = &pInfo->rxBuffer;
-    uint8_t *pError = &pRxBuffer->error[pRxBuffer->frameReadIdx];
+    uint8_t *pError = &pRxBuffer->pError[pRxBuffer->frameReadIdx];
 
     for (i = 0; i < numAdc; i++)
     {
@@ -225,8 +250,8 @@ ADI_ADC_STATUS TransferAdcData(ADI_ADC_INFO *pInfo)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     ADI_ADC_RX_BUFFER *pRxBuffer = &pInfo->rxBuffer;
-    uint8_t *pRxFramesBuff = (uint8_t *)&pRxBuffer->adcRxFrames[0];
-    uint8_t *pTxBuffer = &pInfo->txBufferCmd[0];
+    uint8_t *pRxFramesBuff = (uint8_t *)&pRxBuffer->pAdcRxFrames[0];
+    uint8_t *pTxBuffer = &pInfo->pTxBufferCmd[0];
     uint32_t numBytes = pInfo->allAdcFrameLength;
     uint8_t numAdc = pInfo->adcCfg.numAdc;
     uint32_t crcStatus = 0;
@@ -254,9 +279,9 @@ static ADI_ADC_STATUS UpdateCmdStateAfterTxRxComplete(ADI_ADC_INFO *pInfo,
     ADI_ADC_RX_BUFFER *pRxBuffer = &pInfo->rxBuffer;
     volatile uint8_t *pRxFrame = GetAdcRxWriteFrame(pInfo);
     uint32_t numBytes = pInfo->allAdcFrameLength;
-    uint8_t *pLastCmdRxFrames = &pInfo->lastCmdRxFrames[0];
+    uint8_t *pLastCmdRxFrames = &pInfo->pLastCmdRxFrames[0];
     bool syncInProgress;
-    ADI_ADC_CMD_TYPE *pCmdType = &pRxBuffer->cmdType[pInfo->rxBuffer.frameWriteIdx];
+    ADI_ADC_CMD_TYPE *pCmdType = &pRxBuffer->pCmdType[pInfo->rxBuffer.frameWriteIdx];
 
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
 
@@ -303,48 +328,50 @@ ADI_ADC_STATUS SetConfigurations(ADI_ADC_INFO *pInfo)
     uint32_t allAdcFrameLength = 0;
     // Set frame format to long during initialzation.
     pAdcCfg->frameFormat = ADI_ADC_FRAME_FORMAT_LONG;
-
-    if ((numAdc <= 0) || (numAdc > APP_CFG_MAX_NUM_ADC))
+    if (numAdc <= 0)
     {
         status = ADI_ADC_STATUS_INVALID_NUM_ADC;
     }
-
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
-        status = AdcSetTypeConfig(&pInfo->typeConfig[0], numAdc, pAdcCfg->adcType);
+        status = AdcSetTypeConfig(&pInfo->pTypeConfig[0], numAdc, pAdcCfg->pAdcType);
     }
 
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         pInfo->maxFramesInBuffer = numAdc * (numSamplesInBlock + 2);
-        memset(&pInfo->txBuffer[0], 0xFF, sizeof(pInfo->txBuffer));
-        memset(&pInfo->txBufferCmd[0], 0xFF, sizeof(pInfo->txBufferCmd));
-        memset(pRxBuffer, 0x0, sizeof(ADI_ADC_RX_BUFFER));
+        memset(&pInfo->pTxBuffer[0], 0xFF,
+               sizeof(uint8_t) * numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX);
+        memset(&pInfo->pTxBufferCmd[0], 0xFF,
+               sizeof(uint8_t) * numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX);
+        memset(&pRxBuffer->pAdcRxFrames[0], 0x0,
+               sizeof(uint8_t) * (numAdc * (numSamplesInBlock + 2)) *
+                   ADI_ADC_LONG_FRAME_NBYTES_MAX);
+        memset(&pRxBuffer->pError[0], 0x0, sizeof(uint8_t) * (numAdc * (numSamplesInBlock + 2)));
+        memset(&pRxBuffer->pCmdType[0], 0x0,
+               sizeof(ADI_ADC_CMD_TYPE) * (numAdc * (numSamplesInBlock + 2)));
+#if (APP_CFG_USE_TIMESTAMP == 1)
+        memset(&pRxBuffer->pTimestamp[0], 0x0,
+               sizeof(uint32_t) * (numAdc * (numSamplesInBlock + 2)));
+#endif
 
         AdcSyncAbort(pInfo);
 
-        AdcSetTxFrameBufferPtr(&pInfo->txBuffer[0], numAdc, &pInfo->txFramePtr[0],
-                               &pInfo->typeConfig[0]);
-        AdcSetTxFrameBufferPtr(&pInfo->txBufferCmd[0], numAdc, &pInfo->txCmdFramePtr[0],
-                               &pInfo->typeConfig[0]);
+        AdcSetTxFrameBufferPtr(&pInfo->pTxBuffer[0], numAdc, &pInfo->pTxFramePtr[0],
+                               &pInfo->pTypeConfig[0]);
+        AdcSetTxFrameBufferPtr(&pInfo->pTxBufferCmd[0], numAdc, &pInfo->pTxCmdFramePtr[0],
+                               &pInfo->pTypeConfig[0]);
 
         allAdcFrameLength = 0;
         for (i = 0; i < numAdc; i++)
         {
-            allAdcFrameLength += pInfo->typeConfig[i].frameLength;
+            allAdcFrameLength += pInfo->pTypeConfig[i].frameLength;
         }
         pInfo->allAdcFrameLength = allAdcFrameLength;
         for (i = 0; i < (numSamplesInBlock + 1); i++)
         {
-            AdcSetRxFrameBufferPtr(&pRxBuffer->adcRxFrames[i * allAdcFrameLength], numAdc,
-                                   &pInfo->rxFramePtr[i * numAdc], &pInfo->typeConfig[0]);
-        }
-    }
-    if (status == ADI_ADC_STATUS_SUCCESS)
-    {
-        if (pInfo->maxFramesInBuffer > ADI_ADC_MAX_RX_FRAMES)
-        {
-            status = ADI_ADC_STATUS_INVALID_NUM_SAMPLES_IN_BLOCK;
+            AdcSetRxFrameBufferPtr(&pRxBuffer->pAdcRxFrames[i * allAdcFrameLength], numAdc,
+                                   &pInfo->pRxFramePtr[i * numAdc], &pInfo->pTypeConfig[0]);
         }
     }
     if (status == ADI_ADC_STATUS_SUCCESS)
@@ -373,25 +400,40 @@ ADI_ADC_STATUS ResetConfigurations(ADI_ADC_INFO *pInfo)
 
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
-        memset(&pInfo->txBuffer[0], 0xFF, sizeof(pInfo->txBuffer));
-        memset(&pInfo->txBufferCmd[0], 0xFF, sizeof(pInfo->txBufferCmd));
-        memset(pRxBuffer, 0x0, sizeof(ADI_ADC_RX_BUFFER));
+        memset(&pInfo->pTxBuffer[0], 0xFF,
+               sizeof(uint8_t) * numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX);
+        memset(&pInfo->pTxBufferCmd[0], 0xFF,
+               sizeof(uint8_t) * numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX);
+        memset(&pRxBuffer->pAdcRxFrames[0], 0x0,
+               sizeof(uint8_t) * (numAdc * (numSamplesInBlock + 2)) *
+                   ADI_ADC_LONG_FRAME_NBYTES_MAX);
+        pRxBuffer->readIdx = 0;
+        pRxBuffer->writeIdx = 0;
+        pRxBuffer->frameReadIdx = 0;
+        pRxBuffer->frameWriteIdx = 0;
+        memset(&pRxBuffer->pError[0], 0x0, sizeof(uint8_t) * (numAdc * (numSamplesInBlock + 2)));
+        memset(&pRxBuffer->pCmdType[0], 0x0,
+               sizeof(ADI_ADC_CMD_TYPE) * (numAdc * (numSamplesInBlock + 2)));
+#if (APP_CFG_USE_TIMESTAMP == 1)
+        memset(&pRxBuffer->pTimestamp[0], 0x0,
+               sizeof(uint32_t) * (numAdc * (numSamplesInBlock + 2)));
+#endif
 
-        AdcSetTxFrameBufferPtr(&pInfo->txBuffer[0], numAdc, &pInfo->txFramePtr[0],
-                               &pInfo->typeConfig[0]);
-        AdcSetTxFrameBufferPtr(&pInfo->txBufferCmd[0], numAdc, &pInfo->txCmdFramePtr[0],
-                               &pInfo->typeConfig[0]);
+        AdcSetTxFrameBufferPtr(&pInfo->pTxBuffer[0], numAdc, &pInfo->pTxFramePtr[0],
+                               &pInfo->pTypeConfig[0]);
+        AdcSetTxFrameBufferPtr(&pInfo->pTxBufferCmd[0], numAdc, &pInfo->pTxCmdFramePtr[0],
+                               &pInfo->pTypeConfig[0]);
 
         allAdcFrameLength = 0;
         for (i = 0; i < numAdc; i++)
         {
-            allAdcFrameLength += pInfo->typeConfig[i].frameLength;
+            allAdcFrameLength += pInfo->pTypeConfig[i].frameLength;
         }
         pInfo->allAdcFrameLength = allAdcFrameLength;
         for (i = 0; i < (numSamplesInBlock + 1); i++)
         {
-            AdcSetRxFrameBufferPtr(&pRxBuffer->adcRxFrames[i * allAdcFrameLength], numAdc,
-                                   &pInfo->rxFramePtr[i * numAdc], &pInfo->typeConfig[0]);
+            AdcSetRxFrameBufferPtr(&pRxBuffer->pAdcRxFrames[i * allAdcFrameLength], numAdc,
+                                   &pInfo->pRxFramePtr[i * numAdc], &pInfo->pTypeConfig[0]);
         }
     }
 
@@ -445,9 +487,9 @@ ADI_ADC_STATUS AdcReadBlock(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t numSamplesInBlock = pAdcCfg->numSamplesInBlock;
 
-    memset(pAdcStatusOutput, 0x0, (sizeof(ADI_ADC_STATUS_OUTPUT) * APP_CFG_MAX_NUM_ADC));
+    memset(pAdcStatusOutput, 0x0, (sizeof(ADI_ADC_STATUS_OUTPUT) * numAdc));
 #if (APP_CFG_USE_TIMESTAMP == 1)
-    memset(pInfo->runData.timestamp, 0x0, sizeof(pInfo->runData.timestamp));
+    memset(pInfo->runData.pTimestamp, 0x0, sizeof(uint32_t) * (numSamplesInBlock * numAdc));
 #endif
     if (pInfo->blockReady == 1)
     {
@@ -463,16 +505,16 @@ ADI_ADC_STATUS AdcReadBlock(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
              * channels.
              */
             cntPrev = 0;
-            pRxFramesBuff = &pRxBuffer->adcRxFrames[pRxBuffer->readIdx];
-            pError = &pRxBuffer->error[pRxBuffer->frameReadIdx];
-            pCmdType = &pRxBuffer->cmdType[pRxBuffer->frameReadIdx];
+            pRxFramesBuff = &pRxBuffer->pAdcRxFrames[pRxBuffer->readIdx];
+            pError = &pRxBuffer->pError[pRxBuffer->frameReadIdx];
+            pCmdType = &pRxBuffer->pCmdType[pRxBuffer->frameReadIdx];
 #if (APP_CFG_USE_TIMESTAMP == 1)
-            pTimestamp = &pRxBuffer->timestamp[pRxBuffer->frameReadIdx];
+            pTimestamp = &pRxBuffer->pTimestamp[pRxBuffer->frameReadIdx];
 #endif
 
             for (adcIdx = 0; adcIdx < numAdc; adcIdx++)
             {
-                samplesPerFrame = pInfo->typeConfig[adcIdx].samplesPerFrame;
+                samplesPerFrame = pInfo->pTypeConfig[adcIdx].samplesPerFrame;
                 if (pError[adcIdx] == 0)
                 {
                     /* Copy samplesPerFrame samples that is present in each frame,
@@ -480,30 +522,28 @@ ADI_ADC_STATUS AdcReadBlock(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
                      */
                     CopySamples(&pBuffer[cnt], pRxFramesBuff, samplesPerFrame);
                     /* Copy one sample from each adc to separate buffer */
-                    /* Suppressed warning [-Wincompatible-pointer-types-discards-qualifiers] */
-                    memcpy(&pInfo->prevSamples[cntPrev], &pBuffer[cnt], samplesPerFrame * 4);
+                    memcpy(&pInfo->pPrevSamples[cntPrev], &pBuffer[cnt], samplesPerFrame * 4);
                 }
                 else
                 {
-                    /* Suppressed warning [-Wincompatible-pointer-types-discards-qualifiers] */
-                    memcpy(&pBuffer[cnt], &pInfo->prevSamples[cntPrev], samplesPerFrame * 4);
+                    memcpy(&pBuffer[cnt], &pInfo->pPrevSamples[cntPrev], samplesPerFrame * 4);
                 }
 
                 /* Copy the ADC STATUS0-2 from the last frame of each ADC. */
                 if (sampleIdx == (numSamplesInBlock - 1))
                 {
-                    CopyStatusOutput(&pInfo->typeConfig[adcIdx], pRxFramesBuff, &pCmdType[adcIdx],
+                    CopyStatusOutput(&pInfo->pTypeConfig[adcIdx], pRxFramesBuff, &pCmdType[adcIdx],
                                      &pAdcStatusOutput[adcIdx]);
                 }
                 /* Perform OR of CRC calculated of all the frames corresponding to each ADC. */
                 pAdcStatusOutput[adcIdx].crcError |= pError[adcIdx];
 #if (APP_CFG_USE_TIMESTAMP == 1)
                 /* Copy timestamps for the current block */
-                pInfo->runData.timestamp[timestampCnt++] = pTimestamp[adcIdx];
+                pInfo->runData.pTimestamp[timestampCnt++] = pTimestamp[adcIdx];
 #endif
                 cnt += samplesPerFrame;
                 cntPrev += samplesPerFrame;
-                pRxFramesBuff += pInfo->typeConfig[adcIdx].frameLength;
+                pRxFramesBuff += pInfo->pTypeConfig[adcIdx].frameLength;
             }
             UpdateFrameReadIdx(pInfo);
         }
@@ -633,9 +673,9 @@ ADI_ADC_STATUS AdcCollectSamples(ADI_ADC_INFO *pInfo, uint32_t timestamp)
 #endif
 
     pRxFrame = GetAdcRxWriteFrame(pInfo);
-    pError = &pInfo->rxBuffer.error[pInfo->rxBuffer.frameWriteIdx];
+    pError = &pInfo->rxBuffer.pError[pInfo->rxBuffer.frameWriteIdx];
 #if (APP_CFG_USE_TIMESTAMP == 1)
-    pTimestamp = &pInfo->rxBuffer.timestamp[pInfo->rxBuffer.frameWriteIdx];
+    pTimestamp = &pInfo->rxBuffer.pTimestamp[pInfo->rxBuffer.frameWriteIdx];
 #endif
     numBytes = pInfo->allAdcFrameLength;
     pConfig = &pInfo->adcCfg;
@@ -686,11 +726,11 @@ ADI_ADC_STATUS AdcCollectSamples(ADI_ADC_INFO *pInfo, uint32_t timestamp)
 uint8_t *UpdateWriteCmdStatus(ADI_ADC_INFO *pInfo)
 {
     uint8_t *pAdcTxBuffer;
-    pAdcTxBuffer = &pInfo->txBuffer[0];
+    pAdcTxBuffer = &pInfo->pTxBuffer[0];
     switch (pInfo->cmdStatus)
     {
     case ADI_ADC_READ_WRITE_CMD_STATUS_QUEUED:
-        pAdcTxBuffer = &pInfo->txBufferCmd[0];
+        pAdcTxBuffer = &pInfo->pTxBufferCmd[0];
         pInfo->cmdStatus = ADI_ADC_READ_WRITE_CMD_STATUS_TX_PROGRESS;
         break;
     case ADI_ADC_READ_WRITE_CMD_STATUS_TX_DONE:
@@ -760,25 +800,6 @@ ADI_ADC_STATUS AdcProcessRxFrames(ADI_ADC_INFO *pInfo)
     return adcStatus;
 }
 
-ADI_ADC_STATUS AdcSetDefaultConfig(ADI_ADC_CONFIG *pConfig)
-{
-    ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
-    uint8_t i;
-
-    pConfig->numAdc = APP_CFG_MAX_NUM_ADC;
-    pConfig->frameFormat = ADI_ADC_FRAME_FORMAT_LONG;
-
-    for (i = 0; i < pConfig->numAdc; i++)
-    {
-        pConfig->adcType[i] = ADI_ADC_TYPE_ADEMA127;
-    }
-
-    pConfig->numSamplesInBlock = APP_CFG_MAX_SAMPLE_BLOCK_SIZE;
-    pConfig->ignoreRxBufferOverflow = APP_CFG_IGNORE_RX_BUFFER_OVERFLOW;
-
-    return adcStatus;
-}
-
 ADI_ADC_STATUS AdcClearQuantizationNoise(ADI_ADC_INFO *pInfo, int32_t *pBuffer)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
@@ -796,11 +817,11 @@ ADI_ADC_STATUS AdcClearQuantizationNoise(ADI_ADC_INFO *pInfo, int32_t *pBuffer)
     {
         for (adcIdx = 0; adcIdx < numAdc; adcIdx++)
         {
-            for (channelIdx = 0; channelIdx < pInfo->typeConfig[adcIdx].samplesPerFrame;
+            for (channelIdx = 0; channelIdx < pInfo->pTypeConfig[adcIdx].samplesPerFrame;
                  channelIdx++)
             {
-                scfEn = pInfo->datapathScfEn[adcIdx][channelIdx];
-                shift = pInfo->datapathShift[adcIdx][channelIdx];
+                scfEn = DATAPATH_SCF_EN(pInfo, adcIdx, channelIdx);
+                shift = DATAPATH_SHIFT(pInfo, adcIdx, channelIdx);
 
                 if (scfEn)
                 {
@@ -830,80 +851,76 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t numSamplesInBlock = pAdcCfg->numSamplesInBlock;
+    uint8_t maxNumChannelPerAdc = pInfo->maxNumChannelPerAdc;
 
     uint8_t globalCh = 0;
     uint8_t chIdx = 0;
     ADI_ADC_DELAY_BUFFER *pChBuf;
-    uint16_t readIdx;
-    uint8_t integerSampleDelay = 0;
 
 #if (APP_CFG_USE_TIMESTAMP == 1)
     uint32_t *pTimestamp;
     uint8_t timestampCnt = 0;
-    memset(pInfo->runData.timestamp, 0x0, sizeof(pInfo->runData.timestamp));
+    memset(pInfo->runData.pTimestamp, 0x0, sizeof(uint32_t) * (numSamplesInBlock * numAdc));
 #endif
-    memset(pAdcStatusOutput, 0x0, (sizeof(ADI_ADC_STATUS_OUTPUT) * APP_CFG_MAX_NUM_ADC));
-    memset(pInfo->sampleLinearBuf, 0x0, sizeof(pInfo->sampleLinearBuf));
+    memset(pAdcStatusOutput, 0x0, sizeof(ADI_ADC_STATUS_OUTPUT) * pAdcCfg->numAdc);
+    memset(pInfo->pSampleLinearBuf, 0x0, sizeof(int32_t) * (maxNumChannelPerAdc));
+
     if (pInfo->blockReady == 1)
     {
         pInfo->blockReady = 0;
-
         adcStatus = ADI_ADC_STATUS_SUCCESS;
+
         for (sampleIdx = 0; sampleIdx < numSamplesInBlock; sampleIdx++)
         {
             cntPrev = 0;
-            pRxFramesBuff = &pRxBuffer->adcRxFrames[pRxBuffer->readIdx];
-            pError = &pRxBuffer->error[pRxBuffer->frameReadIdx];
-            pCmdType = &pRxBuffer->cmdType[pRxBuffer->frameReadIdx];
+            pRxFramesBuff = &pRxBuffer->pAdcRxFrames[pRxBuffer->readIdx];
+            pError = &pRxBuffer->pError[pRxBuffer->frameReadIdx];
+            pCmdType = &pRxBuffer->pCmdType[pRxBuffer->frameReadIdx];
 #if (APP_CFG_USE_TIMESTAMP == 1)
-            pTimestamp = &pRxBuffer->timestamp[pRxBuffer->frameReadIdx];
+            pTimestamp = &pRxBuffer->pTimestamp[pRxBuffer->frameReadIdx];
 #endif
+
             for (adcIdx = 0; adcIdx < numAdc; adcIdx++)
             {
-                samplesPerFrame = pInfo->typeConfig[adcIdx].samplesPerFrame;
+                samplesPerFrame = pInfo->pTypeConfig[adcIdx].samplesPerFrame;
                 if (pError[adcIdx] == 0)
                 {
-                    CopySamples(pInfo->sampleLinearBuf, pRxFramesBuff, samplesPerFrame);
+                    CopySamples(pInfo->pSampleLinearBuf, pRxFramesBuff, samplesPerFrame);
+
                     for (chIdx = 0; chIdx < samplesPerFrame; chIdx++)
                     {
-                        globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + chIdx;
-                        pChBuf = &pInfo->channelDelayBuffers[globalCh];
-                        integerSampleDelay = pInfo->adcCfg.integerSampleDelay[globalCh];
-                        // Store sample to circular buffer
-                        pChBuf->buffer[pChBuf->writeIdx] = pInfo->sampleLinearBuf[chIdx];
+                        globalCh = adcIdx * maxNumChannelPerAdc + chIdx;
+                        pChBuf = &pInfo->pChannelDelayBuffers[globalCh];
 
-                        // Calculate read index with delay
-                        readIdx =
-                            (pChBuf->writeIdx + ADI_ADC_DELAY_BUFFER_SIZE - integerSampleDelay) %
-                            ADI_ADC_DELAY_BUFFER_SIZE;
-                        // Copy to output buffer
-                        pBuffer[cnt + chIdx] = pChBuf->buffer[readIdx];
-                        // Update write index
-                        pChBuf->writeIdx = (pChBuf->writeIdx + 1) % ADI_ADC_DELAY_BUFFER_SIZE;
+                        GetDelayedSample(pInfo, pChBuf, pInfo->pSampleLinearBuf[chIdx],
+                                         &pBuffer[cnt + chIdx]);
                     }
-                    memcpy(&pInfo->prevSamples[cntPrev], pBuffer,
+
+                    memcpy(&pInfo->pPrevSamples[cntPrev], pBuffer,
                            samplesPerFrame * sizeof(int32_t));
                 }
                 else
                 {
-                    memcpy(&pBuffer[cnt], &pInfo->prevSamples[cntPrev],
+                    memcpy(&pBuffer[cnt], &pInfo->pPrevSamples[cntPrev],
                            samplesPerFrame * sizeof(int32_t));
                 }
+
                 /* Copy the ADC STATUS0-2 from the last frame of each ADC. */
                 if (sampleIdx == (numSamplesInBlock - 1))
                 {
-                    CopyStatusOutput(&pInfo->typeConfig[adcIdx], pRxFramesBuff, &pCmdType[adcIdx],
+                    CopyStatusOutput(&pInfo->pTypeConfig[adcIdx], pRxFramesBuff, &pCmdType[adcIdx],
                                      &pAdcStatusOutput[adcIdx]);
                 }
                 /* Perform OR of CRC calculated of all the frames corresponding to each ADC. */
                 pAdcStatusOutput[adcIdx].crcError |= pError[adcIdx];
 #if (APP_CFG_USE_TIMESTAMP == 1)
-                pInfo->runData.timestamp[timestampCnt++] = pTimestamp[adcIdx];
+                pInfo->runData.pTimestamp[timestampCnt++] = pTimestamp[adcIdx];
 #endif
                 cnt += samplesPerFrame;
                 cntPrev += samplesPerFrame;
-                pRxFramesBuff += pInfo->typeConfig[adcIdx].frameLength;
+                pRxFramesBuff += pInfo->pTypeConfig[adcIdx].frameLength;
             }
+
             UpdateFrameReadIdx(pInfo);
         }
     }
@@ -918,12 +935,14 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     uint8_t globalCh;
     int8_t adcIdx;
+    ADI_ADC_DELAY_BUFFER *pChBuf;
+    uint8_t maxNumChannelPerAdc = pInfo->maxNumChannelPerAdc;
 
     for (i = 0; i < numChan; i++)
     {
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
-            if (pIntegerDelay[i] > APP_CFG_MAX_SAMPLE_DELAY)
+            if (pIntegerDelay[i] > pInfo->adcCfg.maxSampleDelay)
             {
                 adcStatus = ADI_ADC_STATUS_INVALID_SAMPLE_DELAY;
                 break;
@@ -934,14 +953,25 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
                 {
                     for (adcIdx = 0; adcIdx < pInfo->adcCfg.numAdc; adcIdx++)
                     {
-                        globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                        pInfo->adcCfg.integerSampleDelay[globalCh] = pIntegerDelay[i];
+                        globalCh = adcIdx * maxNumChannelPerAdc + pChanIdx[i];
+                        pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pIntegerDelay[i];
+
+                        // Update readIdx based on current writeIdx and delay
+                        pChBuf = &pInfo->pChannelDelayBuffers[globalCh];
+                        pChBuf->readIdx =
+                            (pChBuf->writeIdx + pInfo->delayBuffSize - pIntegerDelay[i]) %
+                            pInfo->delayBuffSize;
                     }
                 }
                 else
                 {
-                    globalCh = adcNum * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                    pInfo->adcCfg.integerSampleDelay[globalCh] = pIntegerDelay[i];
+                    globalCh = adcNum * maxNumChannelPerAdc + pChanIdx[i];
+                    pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pIntegerDelay[i];
+
+                    // Update readIdx based on current writeIdx and delay
+                    pChBuf = &pInfo->pChannelDelayBuffers[globalCh];
+                    pChBuf->readIdx = (pChBuf->writeIdx + pInfo->delayBuffSize - pIntegerDelay[i]) %
+                                      pInfo->delayBuffSize;
                 }
             }
         }
@@ -961,7 +991,7 @@ ADI_ADC_STATUS CheckChannelValid(ADI_ADC_INFO *pInfo, int8_t adcIdx, uint8_t *pC
     {
         for (i = 0; i < pInfo->adcCfg.numAdc; i++)
         {
-            maxChannels = GetAdcChannelLimit(pInfo->adcCfg.adcType[i]);
+            maxChannels = GetAdcChannelLimit(pInfo->adcCfg.pAdcType[i]);
             if (maxChannels == 0)
             {
                 status = ADI_ADC_STATUS_INVALID_CHANNEL_INDEX;
@@ -986,7 +1016,7 @@ ADI_ADC_STATUS CheckChannelValid(ADI_ADC_INFO *pInfo, int8_t adcIdx, uint8_t *pC
     }
     else
     {
-        maxChannels = GetAdcChannelLimit(pInfo->adcCfg.adcType[adcIdx]);
+        maxChannels = GetAdcChannelLimit(pInfo->adcCfg.pAdcType[adcIdx]);
         if (maxChannels == 0)
         {
             status = ADI_ADC_STATUS_INVALID_CHANNEL_INDEX;
@@ -1035,6 +1065,145 @@ static uint8_t GetAdcChannelLimit(ADI_ADC_TYPE adcType)
     }
 
     return numCh;
+}
+
+ADI_ADC_STATUS AllocateMemory(ADI_ADC_INFO *pInfo, uint32_t *pStateMemory, uint32_t stateMemorySize,
+                              ADI_ADC_CONFIG *pConfig)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    uint32_t offset = 0;
+    uint8_t idx;
+    uint8_t numAdc = pConfig->numAdc;
+    uint8_t blockSize = pConfig->numSamplesInBlock;
+    uint8_t maxNumChannel = pInfo->maxNumChannel;
+    uint8_t maxNumChannelPerAdc = pInfo->maxNumChannelPerAdc;
+    uint8_t delayBuffSize = pInfo->delayBuffSize;
+
+    // Allocate 32-bit aligned pointers
+    pInfo->pRxFramePtr = (uint8_t **)&pStateMemory[offset];
+    offset += numAdc * (blockSize + 2);
+
+    pInfo->pTxCmdFramePtr = (uint8_t **)&pStateMemory[offset];
+    offset += numAdc;
+
+    pInfo->pTxFramePtr = (uint8_t **)&pStateMemory[offset];
+    offset += numAdc;
+
+    pInfo->pTypeConfig = (ADC_TYPE_CONFIG *)&pStateMemory[offset];
+    offset += (sizeof(ADC_TYPE_CONFIG) * numAdc + 3) / sizeof(uint32_t);
+
+    pInfo->pSampleLinearBuf = (int32_t *)&pStateMemory[offset];
+    offset += maxNumChannelPerAdc;
+
+    pInfo->pPrevSamples = (int32_t *)&pStateMemory[offset];
+    offset += maxNumChannel;
+
+    pInfo->adcCfg.pAdcType = (ADI_ADC_TYPE *)&pStateMemory[offset];
+    offset += numAdc;
+
+    pInfo->rxBuffer.pCmdType = (ADI_ADC_CMD_TYPE *)&pStateMemory[offset];
+    offset += (numAdc * (blockSize + 2));
+
+    pInfo->pChannelDelayBuffers = (ADI_ADC_DELAY_BUFFER *)&pStateMemory[offset];
+    offset += (sizeof(ADI_ADC_DELAY_BUFFER) * maxNumChannel + 3) / sizeof(uint32_t);
+
+    for (idx = 0; idx < maxNumChannel; idx++)
+    {
+        pInfo->pChannelDelayBuffers[idx].pBuffer = (int32_t *)&pStateMemory[offset];
+        offset += (sizeof(int32_t) * delayBuffSize) / sizeof(uint32_t);
+    }
+
+#if (APP_CFG_USE_TIMESTAMP == 1)
+
+    pInfo->rxBuffer.pTimestamp = (uint32_t *)&pStateMemory[offset];
+    offset += numAdc * (blockSize + 2);
+
+    pInfo->runData.pTimestamp = (uint32_t *)&pStateMemory[offset];
+    offset += blockSize * numAdc;
+#endif
+
+    pInfo->adcCfg.pIntegerSampleDelay = (uint8_t *)&pStateMemory[offset];
+    offset += maxNumChannel;
+
+    pInfo->pDatapathShift = (uint8_t *)&pStateMemory[offset];
+    offset += numAdc * maxNumChannel;
+
+    pInfo->pDatapathScfEn = (uint8_t *)&pStateMemory[offset];
+    offset += numAdc * maxNumChannel;
+
+    pInfo->pLastCmdRxFrames = (uint8_t *)&pStateMemory[offset];
+    offset += numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX;
+
+    pInfo->pTxBufferCmd = (uint8_t *)&pStateMemory[offset];
+    offset += numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX;
+
+    pInfo->pTxBuffer = (uint8_t *)&pStateMemory[offset];
+    offset += numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX;
+
+    pInfo->rxBuffer.pAdcRxFrames = (uint8_t *)&pStateMemory[offset];
+    offset += (numAdc * (blockSize + 2)) * ADI_ADC_LONG_FRAME_NBYTES_MAX;
+
+    pInfo->rxBuffer.pError = (uint8_t *)&pStateMemory[offset];
+    offset += (numAdc * (blockSize + 2));
+
+    if (offset > (stateMemorySize / sizeof(uint32_t)))
+    {
+        return ADI_ADC_STATUS_INSUFFICIENT_STATE_MEMORY;
+    }
+
+    return status;
+}
+
+static void GetDelayedSample(ADI_ADC_INFO *pInfo, ADI_ADC_DELAY_BUFFER *pChBuf, int32_t newSample,
+                             int32_t *pOutSample)
+{
+    // Store the new sample in the circular buffer
+    pChBuf->pBuffer[pChBuf->writeIdx] = newSample;
+
+    // Read the delayed sample
+    *pOutSample = pChBuf->pBuffer[pChBuf->readIdx];
+
+    // Increment and wrap readIdx
+    pChBuf->readIdx++;
+    if (pChBuf->readIdx >= pInfo->delayBuffSize)
+        pChBuf->readIdx = 0;
+
+    // Increment and wrap writeIdx
+    pChBuf->writeIdx++;
+    if (pChBuf->writeIdx >= pInfo->delayBuffSize)
+        pChBuf->writeIdx = 0;
+}
+
+ADI_ADC_STATUS SetMaxChannels(uint8_t numAdc, ADI_ADC_TYPE *pAdcType, ADI_ADC_INFO *pInfo)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    uint8_t i;
+    pInfo->maxNumChannel = 0;
+
+    for (i = 0; i < numAdc; i++)
+    {
+        if (pAdcType[i] == ADI_ADC_TYPE_ADEMA127)
+        {
+            pInfo->maxNumChannel += 7;
+            pInfo->maxNumChannelPerAdc = 7;
+        }
+        else if (pAdcType[i] == ADI_ADC_TYPE_ADEMA124)
+        {
+            pInfo->maxNumChannel += 4;
+            pInfo->maxNumChannelPerAdc = 4;
+        }
+        else if (pAdcType[i] == ADI_ADC_TYPE_ADE91XX)
+        {
+            pInfo->maxNumChannel += 3;
+            pInfo->maxNumChannelPerAdc = 3;
+        }
+        else
+        {
+            status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
+        }
+    }
+
+    return status;
 }
 
 /**

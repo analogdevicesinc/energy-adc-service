@@ -26,7 +26,7 @@ int32_t SetAttribute(ADC_INTERFACE_INFO *pAdcIf, uint32_t attribute)
     case ADC_ATTRIBUTE_SAMPLING_RATE:
         status = adi_adcutil_PopulateSamplingRate(
             pAdcIf->clkIn, pAdcIf->adcSamplingRate, pAdcIf->decimateBy2, pAdcIf->adcCfg.numAdc,
-            &pAdcIf->adcCfg.adcType[0], &pAdcIf->configRegisters[0]);
+            &pAdcIf->adcCfg.pAdcType[0], &pAdcIf->configRegisters[0]);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
             adcStatus = adi_adc_SetSamplingRate(pAdcIf->hAdc, &pAdcIf->configRegisters[0]);
@@ -50,24 +50,24 @@ int32_t SetDatapathConfig(ADC_INTERFACE_INFO *pAdcIf, uint8_t *pChanIdx, uint8_t
 {
     int32_t status = 0;
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].gainOffsetEn =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].gainOffsetEn =
         (writeVal >> 0) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].scfEn =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].scfEn =
         (writeVal >> 1) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].hpfEn =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].hpfEn =
         (writeVal >> 2) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].compFiltEn =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].compFiltEn =
         (writeVal >> 3) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].compFiltCfg =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].compFiltCfg =
         (writeVal >> 4) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].lpfEn =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].lpfEn =
         (writeVal >> 5) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].allPassEn =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].allPassEn =
         (writeVal >> 6) & 1;
-    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[*pChanIdx].reserved =
+    pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].reserved =
         (writeVal >> 7) & 1;
     adcStatus = AdcIfEnableDatapath(
-        pAdcIf, &pAdcIf->adcRegParams[adcIndex].adcDatapathParams.dataPathConfig[0], pChanIdx, 1,
+        pAdcIf, &pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[0], pChanIdx, 1,
         adcIndex);
     if (adcStatus != ADI_ADC_STATUS_SUCCESS)
     {

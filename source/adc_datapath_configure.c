@@ -287,8 +287,8 @@ ADI_ADC_STATUS AdcSetDatapathAlpha(ADI_ADC_INFO *pInfo, uint8_t *pAlphaVal, int8
 
     for (uint8_t i = 0; i < pInfo->adcCfg.numAdc; i++)
     {
-        maxNumAdcChans = (pInfo->typeConfig[i].samplesPerFrame > maxNumAdcChans)
-                             ? pInfo->typeConfig[i].samplesPerFrame
+        maxNumAdcChans = (pInfo->pTypeConfig[i].samplesPerFrame > maxNumAdcChans)
+                             ? pInfo->pTypeConfig[i].samplesPerFrame
                              : maxNumAdcChans;
     }
 
@@ -320,7 +320,7 @@ ADI_ADC_STATUS AdcSetDatapathAlpha(ADI_ADC_INFO *pInfo, uint8_t *pAlphaVal, int8
 
     for (uint8_t i = 0; i < numAdcs; i++)
     {
-        if (pInfo->adcCfg.adcType[i + adcNum] == ADI_ADC_TYPE_ADEMA127)
+        if (pInfo->adcCfg.pAdcType[i + adcNum] == ADI_ADC_TYPE_ADEMA127)
         {
             // Write ADC Channel 4 and Channel 5 Alpha value
             alphaRegVal = (uint8_t)(((uint32_t)pAlphaVal[5] << 4) | pAlphaVal[4]);
@@ -808,7 +808,7 @@ ADI_ADC_STATUS AdcGetDatapathAlpha(ADI_ADC_INFO *pInfo, int8_t adcNum, uint8_t *
         pAlphaVal[3] = (pReadVal[1] >> 4) & 0x0F;
     }
 
-    if (pInfo->adcCfg.adcType[adcNum] == ADI_ADC_TYPE_ADEMA127)
+    if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADEMA127)
     {
         // Read ADC Channel 4 and Channel 5 Alpha value
         adcStatus = AdcReadRegister(pInfo, ADDR_ADEMA127_MMR_DATAPATH_ALPHA_CH4_5, adcNum,

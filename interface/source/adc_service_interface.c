@@ -14,7 +14,6 @@
 #include "ADE911X_addr_rdef.h"
 #include "ADEMA127_addr_def.h"
 #include "ADEMA127_addr_rdef.h"
-#include "adc_datapath_cfg.h"
 #include "adc_service_dsp_interface.h"
 #include "adi_adc.h"
 #include "adi_evb.h"
@@ -51,8 +50,18 @@ static ADI_ADC_STATUS PopulateAdcConfig(ADC_INTERFACE_INFO *pInfo, uint8_t numAd
  * @param pAdcType Pointer to the ADI_ADC_TYPE array.
  * @return ADI_ADC_STATUS indicating the status of the operation.
  */
-static ADI_ADC_STATUS WriteDatapathRegisters(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc,
-                                             ADI_ADC_TYPE *pAdcType);
+static ADI_ADC_STATUS WriteDatapathRegisters(ADC_INTERFACE_INFO *pInfo, ADI_ADC_CONFIG *pConfig);
+
+/**
+ * @brief Allocate memory for temp memory used by interface
+ *
+ * @param pInfo Pointer to the ADC_INTERFACE_INFO structure.
+ * @param pTempMemory Pointer to the temp memory.
+ * @param tempMemorySize Temp memory size.
+ * @return ADI_ADC_STATUS indicating the status of the operation.
+ */
+ADI_ADC_STATUS AllocateIfTempMemory(ADC_INTERFACE_INFO *pInfo, uint32_t *pTempMemory,
+                                    uint32_t tempMemorySize);
 
 /*============= F U N C T I O N S =============*/
 
@@ -76,6 +85,9 @@ int32_t AdcIfCreateService(ADC_INTERFACE_INFO *pInfo)
     if (status == 0)
     {
         pAdcIf = pInfo;
+#if (APP_CFG_USE_TIMESTAMP == 1)
+        pInfo->runInfo.pTimestamp = pInfo->timestamp;
+#endif
     }
 
     return status;
@@ -126,9 +138,14 @@ ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc, ADI_A
 
     EvbEnableDreadyIrq(1);
 #if APP_CFG_ENABLE_DATAPATH == 1
+
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
-        status = WriteDatapathRegisters(pInfo, numAdc, pAdcType);
+        status = AllocateIfTempMemory(pInfo, pInfo->tempMemory, sizeof(pInfo->tempMemory));
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = WriteDatapathRegisters(pInfo, &pInfo->adcCfg);
     }
 #endif
     if (status == ADI_ADC_STATUS_SUCCESS)
@@ -264,32 +281,40 @@ ADI_ADC_STATUS PopulateAdcConfig(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc, ADI_
     uint8_t i;
     ADI_ADC_CONFIG *pConfig = &pInfo->adcCfg;
 
-    if (pAdcType != NULL)
+    if (status == ADI_ADC_STATUS_SUCCESS)
     {
-        pConfig->numAdc = numAdc;
-        memcpy(&pConfig->adcType[0], pAdcType, sizeof(ADI_ADC_TYPE) * numAdc);
-    }
-    else
-    {
-        pConfig->numAdc = numAdc;
-        for (i = 0; i < numAdc; i++)
+        if (pAdcType != NULL)
         {
-            pConfig->adcType[i] = ADI_ADC_TYPE_ADEMA127;
+            pConfig->numAdc = numAdc;
+            pConfig->pAdcType = pAdcType;
+            pConfig->pIntegerSampleDelay = pInfo->integerSampleDelay;
+            pConfig->maxSampleDelay = APP_CFG_MAX_SAMPLE_DELAY;
+        }
+        else
+        {
+            pConfig->numAdc = numAdc;
+            for (i = 0; i < numAdc; i++)
+            {
+                pInfo->adcType[i] = ADI_ADC_TYPE_ADEMA127;
+            }
+            pConfig->pAdcType = pInfo->adcType;
         }
     }
-
-    status = adi_adcutil_PopulateStreamMode(pInfo->adcStreamMode, numAdc, pConfig->adcType,
-                                            &pInfo->configRegisters[0]);
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = adi_adcutil_PopulateStreamMode(pInfo->adcStreamMode, numAdc, pConfig->pAdcType,
+                                                &pInfo->configRegisters[0]);
+    }
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         status = adi_adcutil_PopulateSamplingRate(pInfo->clkIn, pInfo->adcSamplingRate,
-                                                  pInfo->decimateBy2, numAdc, pConfig->adcType,
+                                                  pInfo->decimateBy2, numAdc, &pConfig->pAdcType[0],
                                                   &pInfo->configRegisters[0]);
     }
 
 #ifdef ENABLE_SIMULATION
     /* FIXME: This need to be moved out to InitTestCmd  fuction*/
-    EvbConnectAdc(numAdc, &pConfig->adcType[0]);
+    EvbConnectAdc(numAdc, &pConfig->pAdcType[0]);
 #endif
 #if APP_CFG_ENABLE_ADCS_CALLBACK == 1
     pConfig->pfCallback = AdcIfAdcCallback;
@@ -361,8 +386,7 @@ int32_t AdcIfReadVersion(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pSil
     return adcStatus;
 }
 
-ADI_ADC_STATUS WriteDatapathRegisters(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc,
-                                      ADI_ADC_TYPE *pAdcType)
+ADI_ADC_STATUS WriteDatapathRegisters(ADC_INTERFACE_INFO *pInfo, ADI_ADC_CONFIG *pConfig)
 {
 
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
@@ -370,8 +394,10 @@ ADI_ADC_STATUS WriteDatapathRegisters(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc,
     int8_t numChannel = 0;
     uint32_t numBytesRead = 0;
     uint32_t regVal = 0;
+    uint8_t numAdc = pConfig->numAdc;
+    ADI_ADC_TYPE *pAdcType = &pConfig->pAdcType[0];
 
-    status = AdcIfDatapathSetVal(pInfo, numAdc);
+    status = AdcIfDatapathSetVal(pInfo, pConfig);
     for (idx = 0; idx < numAdc; idx++)
     {
         if (status == ADI_ADC_STATUS_SUCCESS)
@@ -502,13 +528,13 @@ ADI_ADC_STATUS AdcIfSetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pV
             for (adcNum = 0; adcNum < pInfo->adcCfg.numAdc; adcNum++)
             {
                 globalCh = adcNum * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                pInfo->adcCfg.integerSampleDelay[globalCh] = pValue[i];
+                pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pValue[i];
             }
         }
         else
         {
             globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-            pInfo->adcCfg.integerSampleDelay[globalCh] = pValue[i];
+            pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pValue[i];
         }
     }
     // Set the integer sample delay configuration inside the ADC service
@@ -534,16 +560,76 @@ ADI_ADC_STATUS AdcIfGetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pC
                 for (adcNum = 0; adcNum < pInfo->adcCfg.numAdc; adcNum++)
                 {
                     globalCh = adcNum * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                    pValue[i] = pInfo->adcCfg.integerSampleDelay[globalCh];
+                    pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[globalCh];
                 }
             }
             else
             {
                 globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                pValue[i] = pInfo->adcCfg.integerSampleDelay[globalCh];
+                pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[globalCh];
             }
         }
     }
+    return status;
+}
+
+ADI_ADC_STATUS AllocateIfTempMemory(ADC_INTERFACE_INFO *pInfo, uint32_t *pTempMemory,
+                                    uint32_t tempMemorySize)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    uint32_t offset = 0;
+
+    for (int i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
+    {
+        pInfo->adcRegParams[i].adcDatapathParams.pDataPathConfig =
+            (ADI_ADC_CHAN_DATAPATH_CONFIG *)&pTempMemory[offset];
+        offset += (2 + APP_CFG_MAX_NUM_CHANNELS);
+
+        pInfo->adcRegParams[i].adcDatapathParams.pPhaseOffset = (float *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+    }
+    for (int i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
+    {
+        pInfo->adcRegParams[i].adcChannelParams.pXtAggressor =
+            (ADI_ADC_CHAN_XT_AGGRESSOR *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcChannelParams.pOffset = (int32_t *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcChannelParams.pXtGain = (float *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcChannelParams.pGain = (float *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcChannelParams.pShift = (uint8_t *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+    }
+    for (int i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
+    {
+        pInfo->adcRegParams[i].adcDspBackup.pXtAggressor =
+            (ADI_ADC_CHAN_XT_AGGRESSOR *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcDspBackup.pOffset = (int32_t *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcDspBackup.pXtGain = (float *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcDspBackup.pGain = (float *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+
+        pInfo->adcRegParams[i].adcDspBackup.pShift = (uint8_t *)&pTempMemory[offset];
+        offset += APP_CFG_MAX_NUM_CHANNELS;
+    }
+
+    if (offset > (tempMemorySize / 4))
+    {
+        status = ADI_ADC_STATUS_INSUFFICIENT_STATE_MEMORY;
+    }
+
     return status;
 }
 

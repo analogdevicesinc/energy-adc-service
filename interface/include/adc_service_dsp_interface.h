@@ -27,10 +27,10 @@ extern "C" {
  * @brief Sets the ADC DSP datapath structure with the default values as mentioned configuration
  * file.
  * @param[in]  pInfo - pointer to interface info structure.
- * @param[in]  numAdc - Number of ADCs.
+ * @param[in]  pConfig - ADC Configs
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc);
+ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, ADI_ADC_CONFIG *pConfig);
 
 /**
  * @brief Writes to ADDR_ADEMA127_MMR_ACCESS_EXTENDED_MMAP ADC to access uDSP memory.

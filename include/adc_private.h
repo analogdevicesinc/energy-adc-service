@@ -24,11 +24,6 @@
 extern "C" {
 #endif
 
-/** Maximum number of ADC receive frames. */
-#define ADI_ADC_MAX_RX_FRAMES APP_CFG_MAX_NUM_ADC *(APP_CFG_MAX_SAMPLE_BLOCK_SIZE + 2)
-/** Size of sample delay buffer. */
-#define ADI_ADC_DELAY_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_DELAY + 1)
-
 /**
  * Enum for status of ADC receive command.
  */
@@ -90,8 +85,6 @@ typedef struct
 {
     /** state for adc sync process */
     ADI_ADC_SYNC_STATE syncSnapState;
-    /** adc snap counter register value */
-    uint16_t snapCntRegisterValue[APP_CFG_MAX_NUM_ADC];
     /** wait */
     uint32_t waitCount;
 } ADI_ADC_SYNC_DATA;
@@ -102,8 +95,6 @@ typedef struct
  */
 typedef struct
 {
-    /** Frame buffer. One block is kept extra. */
-    uint8_t adcRxFrames[ADI_ADC_MAX_RX_FRAMES * ADI_ADC_LONG_FRAME_NBYTES_MAX];
     /** Index of earliest frame. */
     int32_t readIdx;
     /** Index of next frame to write */
@@ -112,13 +103,16 @@ typedef struct
     int32_t frameReadIdx;
     /** Index of next frame to write */
     int32_t frameWriteIdx;
-    /** Buffer to store error status of ADC frames */
-    uint8_t error[ADI_ADC_MAX_RX_FRAMES];
     /** Type of ADC command that is sent to the ADCs. */
-    ADI_ADC_CMD_TYPE cmdType[ADI_ADC_MAX_RX_FRAMES];
+    /** Frame buffer. Few blocks are kept extra. */
+    uint8_t *pAdcRxFrames;
+    /** Buffer to store error status of ADC frames */
+    uint8_t *pError;
+    /** Type of ADC command that is sent to the ADCs. */
+    ADI_ADC_CMD_TYPE *pCmdType;
 #if (APP_CFG_USE_TIMESTAMP == 1)
     /** Timestamp buffer */
-    uint32_t timestamp[ADI_ADC_MAX_RX_FRAMES];
+    uint32_t *pTimestamp;
 #endif
 } ADI_ADC_RX_BUFFER;
 
@@ -229,10 +223,12 @@ typedef ADI_ADC_STATUS (*ADC_POPULATE_INIT_FUNC)(ADC_CONFIG_REGISTERS *);
 /** Type for sample delay buffer. */
 typedef struct
 {
-    /** Buffer to store delayed samples. */
-    int32_t buffer[ADI_ADC_DELAY_BUFFER_SIZE];
     /** Write index. */
-    uint16_t writeIdx;
+    uint32_t writeIdx;
+    /** Read index. */
+    uint32_t readIdx;
+    /** Buffer to store delayed samples. */
+    int32_t *pBuffer;
 } ADI_ADC_DELAY_BUFFER;
 
 /**
@@ -269,36 +265,17 @@ typedef struct
     volatile uint8_t blockReady;
     /** Maximum frames in buffer. */
     uint32_t maxFramesInBuffer;
-    /** Buffer to store one proper previous sample of each ADC.
-     * These values are used when there is any CRC error on the
-     * current sample.
-     */
-    int32_t prevSamples[APP_CFG_MAX_NUM_CHANNELS];
 
     /** Flag indicating if synchronization is in progress or not.
      */
     bool syncInProgress;
     /** ADC index for CRC computation of response frame. */
     volatile uint8_t adcCrcIndex;
-    /** Buffer to store the pointers of Tx buffers */
-    uint8_t *txFramePtr[APP_CFG_MAX_NUM_ADC];
-    /** Buffer to store the pointers of Tx Cmd buffers */
-    uint8_t *txCmdFramePtr[APP_CFG_MAX_NUM_ADC];
-    /** Buffer to store the pointers of Rx buffers */
-    uint8_t *rxFramePtr[ADI_ADC_MAX_RX_FRAMES];
-    /** SPI Transmit buffer for commands in runtime */
-    uint8_t txBufferCmd[(APP_CFG_MAX_NUM_ADC * ADI_ADC_LONG_FRAME_NBYTES_MAX)];
-    /** SPI Transmit buffer */
-    uint8_t txBuffer[(APP_CFG_MAX_NUM_ADC * ADI_ADC_LONG_FRAME_NBYTES_MAX)];
     /** SPI Recive buffer */
     ADI_ADC_RX_BUFFER rxBuffer;
-    /** SPI buffer to store previous Rx frames
-     * on issuing a read command */
-    uint8_t lastCmdRxFrames[APP_CFG_MAX_NUM_ADC * ADI_ADC_LONG_FRAME_NBYTES_MAX];
     /** ADC Sync data */
     ADI_ADC_SYNC_DATA syncData;
-    /** ADC type config */
-    ADC_TYPE_CONFIG typeConfig[APP_CFG_MAX_NUM_ADC];
+
     /** Frame size for all ADCs in daisychain*/
     uint32_t allAdcFrameLength;
     /** Indicates whether previous SPI Rx is complete*/
@@ -309,16 +286,48 @@ typedef struct
     uint8_t rxBufferOverflow;
     /** Some runtime statistics & status*/
     ADI_ADC_RUN_DATA runData;
-    /** Datapath shift value */
-    uint8_t datapathShift[APP_CFG_MAX_NUM_ADC][APP_CFG_MAX_NUM_CHANNELS];
-    /** Datapath SCF enable value */
-    uint8_t datapathScfEn[APP_CFG_MAX_NUM_ADC][APP_CFG_MAX_NUM_CHANNELS];
     /** Stores values read from datapath register for processing */
     ADI_ADC_DATAPATH_READ_VALS datapathReadVal;
-    /** Buffer to extract the samples from the ADC frame */
-    int32_t sampleLinearBuf[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
     /** Buffers to store delayed samples */
-    ADI_ADC_DELAY_BUFFER channelDelayBuffers[APP_CFG_MAX_NUM_CHANNELS];
+    ADI_ADC_DELAY_BUFFER *pChannelDelayBuffers;
+    /** Pointer to state memory */
+    uint32_t *pStateMemory;
+    /** state memory size */
+    uint32_t stateMemorySize;
+    /** Maximum number of channels */
+    uint32_t maxNumChannel;
+    /** Maximum number of channels per Adc*/
+    uint32_t maxNumChannelPerAdc;
+    /** Delay buffer size*/
+    uint32_t delayBuffSize;
+
+    /** ADC type config */
+    ADC_TYPE_CONFIG *pTypeConfig;
+    /** Datapath shift value */
+    uint8_t *pDatapathShift;
+    /** Datapath SCF enable value */
+    uint8_t *pDatapathScfEn;
+    /** Buffer to extract the samples from the ADC frame */
+    int32_t *pSampleLinearBuf;
+    /** SPI buffer to store previous Rx frames
+     * on issuing a read command */
+    uint8_t *pLastCmdRxFrames;
+    /** SPI Transmit buffer for commands in runtime */
+    uint8_t *pTxBufferCmd;
+    /** SPI Transmit buffer */
+    uint8_t *pTxBuffer;
+    /** Buffer to store one proper previous sample of each ADC.
+     * These values are used when there is any CRC error on the
+     * current sample.
+     */
+    int32_t *pPrevSamples;
+    /** Buffer to store the pointers of Rx buffers */
+    uint8_t **pRxFramePtr;
+    /** Buffer to store the pointers of Tx Cmd buffers */
+    uint8_t **pTxCmdFramePtr;
+    /** Buffer to store the pointers of Tx buffers */
+    uint8_t **pTxFramePtr;
+
 } ADI_ADC_INFO;
 
 /**
@@ -553,15 +562,6 @@ ADI_ADC_STATUS AdcResetStates(ADI_ADC_INFO *pInfo);
 ADI_ADC_STATUS AdcProcessRxFrames(ADI_ADC_INFO *pInfo);
 
 /**
- * @brief Function to configure the default settings.
- * @param[in]  pConfig	- Pointer to the ADC config structure.
- * @return  One of the codes documented in #ADI_ADC_STATUS. Refer to
- * #ADI_ADC_STATUS documentation for details.
- *
- */
-ADI_ADC_STATUS AdcSetDefaultConfig(ADI_ADC_CONFIG *pConfig);
-
-/**
  * @brief Function to clear quantisation noise.
  * @param[in]  pInfo	- Pointer to the ADC info structure.
  * @param[in]  pBuffer	- Pointer to the buffer with samples.
@@ -614,6 +614,30 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
  */
 ADI_ADC_STATUS CheckChannelValid(ADI_ADC_INFO *pInfo, int8_t adcIdx, uint8_t *pChanIdx,
                                  int8_t numChan);
+
+/**
+ * @brief Allocate memory for pointers.
+ *
+ * @param[in] pInfo     Pointer to the ADC service info structure.
+ * @param[in] pStateMemory    State memory.
+ * @param[in] stateMemorySize    State memory size.
+ * @param[in] pConfig     ADC Configs.
+ *
+ * @return ADI_ADC_STATUS_SUCCESS if all channels are valid, otherwise appropriate error code.
+ */
+ADI_ADC_STATUS AllocateMemory(ADI_ADC_INFO *pInfo, uint32_t *pStateMemory, uint32_t stateMemorySize,
+                              ADI_ADC_CONFIG *pConfig);
+
+/**
+ * @brief Function to set max number of channels.
+ *
+ * @param[in] numAdc    Number of ADC
+ * @param[in] pAdcType  Type of ADCs.
+ * @param[in] pInfo     Pointer to the ADC service info structure..
+ *
+ * @return ADI_ADC_STATUS_SUCCESS if all channels are valid, otherwise appropriate error code.
+ */
+ADI_ADC_STATUS SetMaxChannels(uint8_t numAdc, ADI_ADC_TYPE *pAdcType, ADI_ADC_INFO *pInfo);
 
 #ifdef __cplusplus
 }

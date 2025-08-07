@@ -61,13 +61,13 @@ int main()
     }
     pAdcCfg->numSamplesInBlock = APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE;
     numAdc = 1;
-    pAdcCfg->adcType[0] = ADI_ADC_TYPE_ADEMA127;
+    pAdcsIf->adcType[0] = ADI_ADC_TYPE_ADEMA127;
     pAdcsIf->adcSamplingRate = APP_CFG_ADC_SAMPLING_RATE;
     pAdcsIf->clkIn = APP_CFG_ADC_MCLK;
     pAdcsIf->decimateBy2 = APP_CFG_ADC_DECIMATION_BY2;
     pAdcsIf->adcStreamMode = ADI_ADC_STREAM_MODE_NORM;
 
-    status = AdcIfInitService(pAdcsIf, numAdc, &pAdcsIf->adcCfg.adcType[0]);
+    status = AdcIfInitService(pAdcsIf, numAdc, &pAdcsIf->adcType[0]);
     status = AdcIfStartCapture(pAdcsIf);
 
     if (status == 0)

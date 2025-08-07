@@ -39,7 +39,7 @@ ADI_ADC_STATUS adi_adcutil_PopulateStreamMode(ADI_ADC_STREAM_MODE streamMode, ui
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint8_t i;
 
-    if ((numAdc <= 0) || (numAdc > APP_CFG_MAX_NUM_ADC))
+    if (numAdc <= 0)
     {
         status = ADI_ADC_STATUS_INVALID_NUM_ADC;
     }
@@ -86,7 +86,7 @@ ADI_ADC_STATUS adi_adcutil_PopulateSamplingRate(uint32_t clkIn, uint32_t samplin
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint8_t i;
 
-    if ((numAdc <= 0) || (numAdc > APP_CFG_MAX_NUM_ADC))
+    if (numAdc <= 0)
     {
         status = ADI_ADC_STATUS_INVALID_NUM_ADC;
     }

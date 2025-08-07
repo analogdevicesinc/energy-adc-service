@@ -35,7 +35,6 @@
 #include "adi_cli_iiod_xml.h"
 #include "adi_evb.h"
 #include "app_cfg.h"
-#include "cli_interface.h"
 #include "iiod_dispatch_table.h"
 #include "message.h"
 #include <inttypes.h>
@@ -80,7 +79,7 @@ static char *pAdcExampleSettings[] = {"recommended", "default_adema127"};
 /** Uart Info */
 int32_t uartInfo;
 static Args args;
-
+static ADC_EXAMPLE_SETTINGS_TYPE settings;
 /** Macro indicating the end of the array. */
 #define END_ATTRIBUTES_ARRAY                                                                       \
     {                                                                                              \
@@ -149,6 +148,9 @@ ADC_EXAMPLE_STATUS InitServices(void)
     ADI_CLI_STATUS cliStatus = ADI_CLI_STATUS_SUCCESS;
     uint8_t numAdc = 1;
     uint32_t i;
+    uint32_t totalSampleBlockSize;
+    uint32_t numMaxBlocks;
+    void *pCmdInfo;
     pExample->pAdcIf = &adcIf;
     pExample->pCliInfo = &cliInfo;
     pExample->pXmlDescBuffer = &xmlDescBuffer[0];
@@ -180,16 +182,18 @@ ADC_EXAMPLE_STATUS InitServices(void)
                            sizeof(pExample->pCliInfo->tempMemory));
         if (cliStatus == ADI_CLI_STATUS_SUCCESS)
         {
-            cliStatus = adi_cli_Init(&pExample->pCliInfo->config);
+            cliStatus = adi_cli_Init(pExample->pCliInfo->hCli, &pExample->pCliInfo->config);
+            adi_cli_SetHandleTerminal(pExample->pCliInfo->hCli);
         }
         if (cliStatus != ADI_CLI_STATUS_SUCCESS)
         {
             status = ADC_EXAMPLE_STATUS_CLI_INIT_FAILED;
         }
+        pCmdInfo = GetHandleForDispatchCommands(pExample->pCliInfo->hCli);
         pArgs->c = 2;
         pArgs->v[0].pS = "off";
         pArgs->v[1].pS = "off";
-        CliCmdManual(pArgs);
+        CliCmdEcho(pCmdInfo, dispatchTable, pArgs, NUM_COMMANDS);
         if (InitIio())
         {
             pExample->triggerDevice = 0;
@@ -221,6 +225,12 @@ ADC_EXAMPLE_STATUS InitServices(void)
             {
                 status = ADC_EXAMPLE_STATUS_ADC_INIT_FAILED;
             }
+            totalSampleBlockSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
+                                   pExample->pAdcIf->runInfo.totalChannels;
+            numMaxBlocks = ADC_EXM_MAX_SAMPLES_TO_STORE / totalSampleBlockSize;
+            pExample->samplesBuffer.pCircBuff->nSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
+                                                       pExample->pAdcIf->runInfo.totalChannels *
+                                                       numMaxBlocks * APP_CFG_BYTES_PER_SAMPLE;
         }
         if (status == 0)
         {
@@ -250,8 +260,6 @@ void PopulateExamplePointers(ADC_EXAMPLE *pExample)
     pEvbConfig->uartConfig.pfHostUartTxCallback = HostUartTxCallback;
     pExample->pCliInfo->config.pfTransmitAsync = CliTransmitAsync;
     pExample->pCliInfo->config.pfReceiveAsync = CliReceiveAsync;
-    pExample->pCliInfo->config.pDispatchTable = dispatchTable;
-    pExample->pCliInfo->config.numRecords = NUM_COMMANDS;
     pExample->pHpfCutoffFreq = pAdcHpfCutoffFreq[0];
     pExample->pExampleSettings = pAdcExampleSettings[0];
 }
@@ -411,7 +419,7 @@ int32_t DebugRegWrite(uint32_t address, uint32_t value)
     {
         // Save DSP RAM region before datapath config unlock
         adcStatus =
-            AdcIfGetDspRegisterStruct(pAdcIf, pAdcIf->adcCfg.numAdc, pAdcIf->adcCfg.adcType);
+            AdcIfGetDspRegisterStruct(pAdcIf, pAdcIf->adcCfg.numAdc, &pAdcIf->adcCfg.pAdcType[0]);
     }
     /** It is recommended to update ADC_PD_CHx, ADC_GAIN_CHx, ADC_INV_CHx, ADC_CMI_CHx  while ADC
      * conversion is halted */
@@ -442,8 +450,8 @@ int32_t DebugRegWrite(uint32_t address, uint32_t value)
     if (address == ADDR_ADEMA127_MMR_DATAPATH_CONFIG_LOCK && value == 1)
     {
         // Reload DSP RAM after datapath config is locked
-        adcStatus =
-            AdcIfPopulateDspRegisterStruct(pAdcIf, pAdcIf->adcCfg.numAdc, pAdcIf->adcCfg.adcType);
+        adcStatus = AdcIfPopulateDspRegisterStruct(pAdcIf, pAdcIf->adcCfg.numAdc,
+                                                   &pAdcIf->adcCfg.pAdcType[0]);
     }
 
     if (address >= ADDR_ADEMA127_DSP_RAM_CH0_COMP_COEFF_B0_LO &&
@@ -486,7 +494,8 @@ int IIoAttrGet(int32_t attrId, int32_t *pChannel, char *pDst)
     int32_t chanOffset;
     ADC_EXAMPLE *pExample = &adcExample;
     ADC_INTERFACE_INFO *pAdcIf = pExample->pAdcIf;
-    ADI_ADC_DSP_DATAPATH_PARAMS *pDatapathParams = &pExample->adcDatapathParams;
+    ADI_ADC_DSP_DATAPATH_PARAMS *pDatapathParams =
+        &pExample->pAdcIf->adcRegParams[pExample->adcIndex].adcDatapathParams;
     uint32_t chanDataPathVal;
 
     if (IsAvailAttr(attrId))
@@ -537,21 +546,21 @@ int IIoAttrGet(int32_t attrId, int32_t *pChannel, char *pDst)
     case ADC_EXAMPLE_ATTR_ID_DATAPATH_CONFIG:
         status = adi_adc_GetDatapathParams(pAdcIf->hAdc, (uint8_t *)pChannel, 1, pExample->adcIndex,
                                            pDatapathParams);
-        chanDataPathVal = ExtractDatapathConfig(pDatapathParams->dataPathConfig[0]);
+        chanDataPathVal = ExtractDatapathConfig(pDatapathParams->pDataPathConfig[0]);
         sprintf(pDst, "%.2f", (float)chanDataPathVal);
         break;
     case ADC_EXAMPLE_ATTR_ID_CHAN_SCALE:
         sprintf(pDst, "%.5f", pExample->adcChanScale[*pChannel]);
         break;
     case ADC_EXAMPLE_ATTR_ID_CHOOSE_SETTINGS:
-        sprintf(pDst, "%s", pExample->pExampleSettings);
+        sprintf(pDst, "%s", pAdcExampleSettings[pExample->settings]);
         break;
     case ADC_EXAMPLE_ATTR_ID_TAMPER_CNT:
         sprintf(pDst, "%ld", pAdcIf->tamperCnt);
         break;
     case ADC_EXAMPLE_ATTR_ID_CHAN_INTEGER_SAMPLE_DELAY:
         status = adi_adc_GetConfig(pAdcIf->hAdc, &pAdcIf->adcCfg);
-        val = pAdcIf->adcCfg.integerSampleDelay[*pChannel];
+        val = pAdcIf->adcCfg.pIntegerSampleDelay[*pChannel];
         if (status != ADI_ADC_STATUS_SUCCESS)
         {
         }
@@ -712,36 +721,37 @@ int IioAttrAvailableGet(uint32_t attrId, char *pDst)
 ADC_EXAMPLE_STATUS ProcessCommand(void)
 {
     ADC_EXAMPLE_STATUS status = ADC_EXAMPLE_STATUS_SUCCESS;
-    if (adi_cli_FlushMessages() == 0)
+    ADC_EXAMPLE *pExample = &adcExample;
+    EXAMPLE_CLI_INFO *pCliInfo = pExample->pCliInfo;
+    ADI_CLI_STATUS cliStatus = 0;
+    if (adi_cli_FlushMessages(pCliInfo->hCli) == 0)
     {
-        adi_cli_Interface();
+        cliStatus = adi_cli_GetCmd(pCliInfo->hCli, pCliInfo->command);
+        if (cliStatus == ADI_CLI_STATUS_SUCCESS)
+        {
+            cliStatus =
+                adi_cli_Dispatch(pCliInfo->hCli, pCliInfo->command, dispatchTable, NUM_COMMANDS);
+        }
     }
     return status;
 }
 
 void ProcessInitCommand(ADC_EXAMPLE *pExample)
 {
-    uint32_t totalSampleBlockSize;
-    uint32_t numMaxBlocks;
     for (int i = 0; i < pExample->numAdc; i++)
     {
         // FIX ME: How to configure different adcTypes in IIO?
         pExample->adcTypes[i] = (ADI_ADC_TYPE)pExample->adcVariant;
     }
-    pExample->samplesBuffer.pCircBuff->nReadIndex = 0;
-    pExample->samplesBuffer.pCircBuff->nWriteIndex = 0;
     AdcIfInitService(pExample->pAdcIf, pExample->numAdc, &pExample->adcTypes[0]);
-    totalSampleBlockSize =
-        pExample->pAdcIf->adcCfg.numSamplesInBlock * pExample->pAdcIf->runInfo.totalChannels;
-    numMaxBlocks = ADC_EXM_MAX_SAMPLES_TO_STORE / totalSampleBlockSize;
-    pExample->samplesBuffer.pCircBuff->nSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
-                                               pExample->pAdcIf->runInfo.totalChannels *
-                                               numMaxBlocks * APP_CFG_BYTES_PER_SAMPLE;
 }
 
 void ApplySettings(ADC_EXAMPLE *pExample)
 {
-
+    uint32_t totalSampleBlockSize;
+    uint32_t numMaxBlocks;
+    pExample->samplesBuffer.pCircBuff->nReadIndex = 0;
+    pExample->samplesBuffer.pCircBuff->nWriteIndex = 0;
     if (pExample->settings == ADC_EXAMPLE_RECOMMENDED_SETTINGS)
     {
         ProcessInitCommand(pExample);
@@ -750,6 +760,12 @@ void ApplySettings(ADC_EXAMPLE *pExample)
     {
         ResetAdc();
     }
+    totalSampleBlockSize =
+        pExample->pAdcIf->adcCfg.numSamplesInBlock * pExample->pAdcIf->runInfo.totalChannels;
+    numMaxBlocks = ADC_EXM_MAX_SAMPLES_TO_STORE / totalSampleBlockSize;
+    pExample->samplesBuffer.pCircBuff->nSize = pExample->pAdcIf->adcCfg.numSamplesInBlock *
+                                               pExample->pAdcIf->runInfo.totalChannels *
+                                               numMaxBlocks * APP_CFG_BYTES_PER_SAMPLE;
 }
 
 void ChooseSettings(char *pSrc)
@@ -768,8 +784,7 @@ void ChooseSettings(char *pSrc)
             break;
         }
     }
-    pExample->pExampleSettings = pTrimmedSrc;
-    pExample->settings = (ADC_EXAMPLE_SETTINGS_TYPE)val;
+    pExample->settings = val;
 }
 
 void SetChanGainAttr(char *pBuf, uint8_t *pChanIdx)
@@ -1028,12 +1043,16 @@ int32_t GetGlobalAttributeId(char *pAttrName)
 
 void HostUartRxCallback()
 {
-    adi_cli_RxCallback();
+    ADC_EXAMPLE *pExample = &adcExample;
+    EXAMPLE_CLI_INFO *pCliInfo = pExample->pCliInfo;
+    adi_cli_RxCallback(pCliInfo->hCli);
 }
 
 void HostUartTxCallback(void)
 {
-    adi_cli_TxCallback();
+    ADC_EXAMPLE *pExample = &adcExample;
+    EXAMPLE_CLI_INFO *pCliInfo = pExample->pCliInfo;
+    adi_cli_TxCallback(pCliInfo->hCli);
 }
 
 int32_t CliReceiveAsync(void *pInfo, char *pData, uint32_t numBytes)

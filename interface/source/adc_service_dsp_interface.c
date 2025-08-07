@@ -21,7 +21,7 @@
 
 /*============= F U N C T I O N S =============*/
 
-ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
+ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, ADI_ADC_CONFIG *pConfig)
 {
 
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
@@ -29,6 +29,7 @@ ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
     uint8_t channelNum;
     uint8_t adcIdx;
     uint8_t adcDatapathConfig;
+    uint8_t numAdc = pConfig->numAdc;
 
     ADI_ADC_DSP_DATAPATH_PARAMS *pDatapathParams;
     ADI_ADC_DSP_CHANNEL_PARAMS *pChannelParams;
@@ -39,8 +40,19 @@ ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
         pChannelParams = &pInfo->adcRegParams[i].adcChannelParams;
         pInfo->regCmiInvVal[i] = 0;
 
-        memset(pDatapathParams, 0, sizeof(ADI_ADC_DSP_DATAPATH_PARAMS));
-        memset(pChannelParams, 0, sizeof(ADI_ADC_DSP_CHANNEL_PARAMS));
+        memset(&pDatapathParams->alpha, 0, sizeof(pDatapathParams->alpha));
+        memset(&pDatapathParams->pDataPathConfig[0], 0,
+               sizeof(ADI_ADC_CHAN_DATAPATH_CONFIG) * APP_CFG_MAX_NUM_CHANNELS);
+        memset(&pDatapathParams->datarate, 0, sizeof(pDatapathParams->datarate));
+        memset(&pDatapathParams->pPhaseOffset[0], 0, sizeof(float) * APP_CFG_MAX_NUM_CHANNELS);
+        memset(pChannelParams->pOffset, 0, sizeof(int32_t) * APP_CFG_MAX_NUM_CHANNELS);
+        memset(pChannelParams->pXtGain, 0, sizeof(float) * APP_CFG_MAX_NUM_CHANNELS);
+        memset(pChannelParams->pGain, 0, sizeof(float) * APP_CFG_MAX_NUM_CHANNELS);
+
+        memset(pChannelParams->pXtAggressor, 0,
+               sizeof(ADI_ADC_CHAN_XT_AGGRESSOR) * APP_CFG_MAX_NUM_CHANNELS);
+
+        memset(pChannelParams->pShift, 0, sizeof(uint8_t) * APP_CFG_MAX_NUM_CHANNELS);
 
         pDatapathParams->datarate.decimationRate = APP_CFG_ADC_DECIMATION_RATE;
         pDatapathParams->datarate.clkPreScalar = APP_CFG_ADC_PRESCALER;
@@ -57,13 +69,14 @@ ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
         pChannelParams = &pInfo->adcRegParams[adcIdx].adcChannelParams;
 
         adcDatapathConfig = APP_CFG_ADC_DATAPATH_CONFIG_VOLTAGE;
-        memcpy(&pDatapathParams->dataPathConfig[channelNum], &adcDatapathConfig,
+        memcpy(&pDatapathParams->pDataPathConfig[channelNum], &adcDatapathConfig,
                sizeof(ADI_ADC_CHAN_DATAPATH_CONFIG));
 
-        pDatapathParams->phaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_VOLTAGE;
-        pChannelParams->gain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_VOLTAGE;
-        pChannelParams->offset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_VOLTAGE;
-        pChannelParams->shift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_VOLTAGE;
+        pDatapathParams->pPhaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_VOLTAGE;
+
+        pChannelParams->pGain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_VOLTAGE;
+        pChannelParams->pOffset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_VOLTAGE;
+        pChannelParams->pShift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_VOLTAGE;
     }
 
     for (i = 0; i < APP_CFG_MAX_NUM_CURRENT_CHANNELS; i++)
@@ -75,13 +88,14 @@ ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
         pInfo->regCmiInvVal[adcIdx] |= (1 << channelNum);
 
         adcDatapathConfig = APP_CFG_ADC_DATAPATH_CONFIG_CURRENT;
-        memcpy(&pDatapathParams->dataPathConfig[channelNum], &adcDatapathConfig,
+        memcpy(&pDatapathParams->pDataPathConfig[channelNum], &adcDatapathConfig,
                sizeof(ADI_ADC_CHAN_DATAPATH_CONFIG));
 
-        pDatapathParams->phaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_CURRENT;
-        pChannelParams->gain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_CURRENT;
-        pChannelParams->offset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_CURRENT;
-        pChannelParams->shift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_CURRENT;
+        pDatapathParams->pPhaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_CURRENT;
+
+        pChannelParams->pGain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_CURRENT;
+        pChannelParams->pOffset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_CURRENT;
+        pChannelParams->pShift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_CURRENT;
     }
 
     for (i = 0; i < numAdc; i++)
@@ -150,7 +164,7 @@ ADI_ADC_STATUS AdcIfConfigDspLock(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8
     if (value == 0)
     {
         // Save DSP RAM region before datapath config is unlocked
-        status = AdcIfGetDspRegisterStruct(pInfo, pInfo->adcCfg.numAdc, pInfo->adcCfg.adcType);
+        status = AdcIfGetDspRegisterStruct(pInfo, pInfo->adcCfg.numAdc, pInfo->adcCfg.pAdcType);
         AdcIfStopCapture(pInfo);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
@@ -171,7 +185,7 @@ ADI_ADC_STATUS AdcIfConfigDspLock(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8
             {
                 // Reload DSP RAM region after datapath config is locked
                 status = AdcIfPopulateDspRegisterStruct(pInfo, pInfo->adcCfg.numAdc,
-                                                        pInfo->adcCfg.adcType);
+                                                        pInfo->adcCfg.pAdcType);
             }
             // Wait for DREADY signal to resume
             while (pInfo->dreadyFlag == 0)
@@ -584,7 +598,7 @@ ADI_ADC_STATUS AdcIfGetHpfCutoff(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint3
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
 
-    if (pInfo->adcCfg.adcType[adcIdx] != ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] != ADI_ADC_TYPE_ADE91XX)
     {
         *pBwOption = pInfo->bwOption[adcIdx];
     }
@@ -618,11 +632,11 @@ ADI_ADC_STATUS AdcIfGetDspConfig(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanIdx, i
     if (adcStatus == ADI_ADC_STATUS_SUCCESS)
     {
         adcStatus = AdcIfGetDatapathConfig(pInfo, pChanIdx, numChan, adcIdx,
-                                           &pDatapathParams->dataPathConfig[0]);
+                                           &pDatapathParams->pDataPathConfig[0]);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
             adcStatus = AdcIfGetPhaseOffset(pInfo, pChanIdx, numChan, adcIdx,
-                                            &pDatapathParams->phaseOffset[0]);
+                                            &pDatapathParams->pPhaseOffset[0]);
         }
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
@@ -745,7 +759,7 @@ ADI_ADC_STATUS AdcIfSetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
 
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
     }
@@ -763,7 +777,7 @@ ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint32_t numBytesRead = 0;
     uint8_t cmiReg[2];
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
     }
@@ -783,7 +797,7 @@ ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
     uint32_t numBytesRead = 0;
     uint8_t invRegVal[2];
 
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status = AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcIdx, invRegVal,
                                    &numBytesRead);
@@ -800,7 +814,7 @@ ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
             status = AdcIfWriteRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, invRegVal[1], adcIdx);
         }
     }
-    else if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADEMA127)
+    else if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADEMA127)
     {
         // For ADEMA127, write the ADC Invert register value
         status =
@@ -822,7 +836,7 @@ ADI_ADC_STATUS AdcIfGetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
     uint32_t numBytesRead = 0;
     uint8_t invReg[2];
 
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status =
             AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcIdx, invReg, &numBytesRead);

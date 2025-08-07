@@ -27,12 +27,23 @@ extern "C" {
  * @{
  */
 
-/** State memory required in bytes for the library. Allocate a buffer aligned to
- * 32 bit boundary */
-#define ADI_ADC_STATE_MEM_NUM_BYTES sizeof(ADI_ADC_INFO)
-/** Temporary memory required in bytes for the library. Allocate a buffer
- * aligned to 32 bit boundary. */
-#define ADI_ADC_TEMP_MEM_NUM_BYTES 32
+/** State memory required for 4 ADEMA127, block size = 4, Max sample delay= 4. */
+#define ADI_ADC_STATE_MEM_NUM_BYTES_4XADEMA127_4XBLOCKSIZE                                         \
+    ADI_ADC_STATE_MEM_NUM_BYTES(4, 7, 28, 4, 4)
+
+/** State memory required for 1 ADEMA127, block size = 1, Max sample delay= 0. */
+#define ADI_ADC_STATE_MEM_NUM_BYTES_1XADEMA127_1XBLOCKSIZE                                         \
+    ADI_ADC_STATE_MEM_NUM_BYTES(1, 7, 7, 1, 0)
+
+/** State memory required in bytes for the library. */
+#define ADI_ADC_STATE_MEM_NUM_BYTES(numAdc, maxNumChannelPerAdc, maxNumChannel, blockSize,         \
+                                    maxSampleDelay)                                                \
+    (sizeof(ADI_ADC_INFO) +                                                                        \
+     ((numAdc * 113) + (maxNumChannelPerAdc * 7) + (maxNumChannel * 6) +                           \
+      (blockSize * numAdc * 1) + (numAdc * maxNumChannel * 2) + (numAdc * (blockSize + 2) * 35) +  \
+      (maxNumChannel * (maxSampleDelay + 1))) *                                                    \
+         sizeof(uint32_t) +                                                                        \
+     3)
 
 /**
  * @}

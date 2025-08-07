@@ -29,9 +29,20 @@ extern "C" {
  * @{
  */
 
+/** Temp memory required for 4 ADEMA127 */
+#define TEMP_MEM_NUM_BYTES_4XADEMA127 TEMP_MEM_NUM_BYTES(4, 28)
+
+/** Temp memory required in interface. */
+#define TEMP_MEM_NUM_BYTES(numAdc, maxNumChannel) (numAdc * maxNumChannel * 48) + 3
+
 #ifndef APP_CFG_IGNORE_RX_BUFFER_OVERFLOW
 /** Ignore Rx Buffer Overflow */
 #define APP_CFG_IGNORE_RX_BUFFER_OVERFLOW 1
+#endif
+
+#if (APP_CFG_USE_TIMESTAMP == 1)
+/** Size of timestamp buffer. */
+#define TIMESTAMP_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_BLOCK_SIZE * APP_CFG_MAX_NUM_ADC)
 #endif
 
 /**
@@ -65,14 +76,12 @@ typedef struct
 } ADC_BOARD_CONFIG;
 
 /**
- * ADC example Info structure
+ * ADC interface Info structure
  */
 typedef struct
 {
     /** ADC Handle */
     ADI_ADC_HANDLE hAdc;
-    /** Library memory */
-    uint32_t adcStateMemory[ADI_ADC_STATE_MEM_NUM_BYTES / 4];
     /** Stores ADC configuration parameters */
     ADI_ADC_CONFIG adcCfg;
     /** Buffer to store ADC status while reading a block of data. */
@@ -127,6 +136,20 @@ typedef struct
     uint8_t regCmiInvVal[APP_CFG_MAX_NUM_ADC];
     /** Flag set when DREADY interrupt occurs */
     volatile uint8_t dreadyFlag;
+
+    /** ADC types*/
+    ADI_ADC_TYPE adcType[APP_CFG_MAX_NUM_ADC];
+    /** Integer sample delay requested by user. */
+    uint8_t integerSampleDelay[APP_CFG_MAX_NUM_CHANNELS];
+#if (APP_CFG_USE_TIMESTAMP == 1)
+    /** Timestamp */
+    uint32_t timestamp[TIMESTAMP_BUFFER_SIZE];
+#endif
+    /** Library memory */
+    uint32_t adcStateMemory[ADI_ADC_STATE_MEM_NUM_BYTES_4XADEMA127_4XBLOCKSIZE / 4];
+    /** Interface memory */
+    uint32_t tempMemory[TEMP_MEM_NUM_BYTES_4XADEMA127 / 4];
+
 } ADC_INTERFACE_INFO;
 
 /** @} */

@@ -65,25 +65,8 @@ extern "C" {
  */
 #define ADEMA12x_ADC_FULL_SCALE_CODE 0x599999
 
-#if (APP_CFG_USE_TIMESTAMP == 1)
-/** Size of timestamp buffer. */
-#define ADI_ADC_TIMESTAMP_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_BLOCK_SIZE * APP_CFG_MAX_NUM_ADC)
-#endif
-
-#ifndef APP_CFG_MAX_NUM_ADC // Check if APP_CFG_MAX_NUM_ADC is not defined
-/** Maximum number of ADCs supported. */
-#define APP_CFG_MAX_NUM_ADC 4 // Default value for APP_CFG_MAX_NUM_ADC
-#endif
-
-#ifndef APP_CFG_MAX_NUM_CHANNELS
-/** Maximum number of channels supported. */
-#define APP_CFG_MAX_NUM_CHANNELS 28
-#endif
-
-#ifndef APP_CFG_MAX_SAMPLE_BLOCK_SIZE
-/** block size */
-#define APP_CFG_MAX_SAMPLE_BLOCK_SIZE 4
-#endif
+/** The full-scale code value for the ADE91XX ADC. */
+#define ADE91XX_ADC_FULL_SCALE_CODE 0x7FFFFF
 
 /**
  * @brief Function pointer type for transmit and receive operations.
@@ -209,9 +192,6 @@ typedef enum
     ADI_ADC_STATUS_INVALID_SAMPLING_RATE,
     /** Value of stream mode provided as argument to the API is invalid. */
     ADI_ADC_STATUS_INVALID_STREAM_MODE,
-    /** Value of "numSamplesInBlock" in the structure #ADI_ADC_CONFIG passed to the function is
-       invalid. */
-    ADI_ADC_STATUS_INVALID_NUM_SAMPLES_IN_BLOCK,
     /** ADC index provided as argument to the API is invalid. */
     ADI_ADC_STATUS_INVALID_ADC_INDEX,
     /** Errors occurred while configuring the ADCs to its operational state. */
@@ -282,8 +262,6 @@ typedef ADI_ADC_STATUS (*ADI_ADC_CALLBACK_FUNC)(void *hUser, uint32_t eventMask)
 typedef struct
 {
     /** Number of ADCs in the board.
-     *  Value should be greater than zero
-     *  and less than or equal to APP_CFG_MAX_NUM_ADC.
      */
     uint8_t numAdc;
     /** Ignore Rx Buffer overflow error and continue collecting ADC frames */
@@ -292,10 +270,6 @@ typedef struct
     uint8_t numSamplesInBlock;
     /** Frame format. */
     uint8_t frameFormat;
-    /** Type of ADCs connected.
-     *  This should be of type #ADI_ADC_TYPE.
-     */
-    ADI_ADC_TYPE adcType[APP_CFG_MAX_NUM_ADC];
     /** User handle. */
     void *hUser;
     /** Function pointer for SPI transceive. The function should return only after completing the
@@ -315,8 +289,13 @@ typedef struct
      * calculates CRC-16. */
     ADI_ADC_CALC_CRC_FUNC pfCalcRespCrc;
     /** Integer sample delay requested by user. */
-    uint8_t integerSampleDelay[APP_CFG_MAX_NUM_CHANNELS];
-
+    uint8_t *pIntegerSampleDelay;
+    /** Type of ADCs connected.
+     *  This should be of type #ADI_ADC_TYPE.
+     */
+    ADI_ADC_TYPE *pAdcType;
+    /** Maximum value for sample delay. */
+    uint8_t maxSampleDelay;
 } ADI_ADC_CONFIG;
 
 /** @} */
@@ -381,8 +360,6 @@ typedef struct
 {
     /** total number of channels*/
     uint32_t totalChannels;
-    /** Number of channels per ADC */
-    uint8_t channelsPerAdc[APP_CFG_MAX_NUM_ADC];
     /** Number of samples collected */
     uint32_t numSamplesCollected;
     /** Count of overflow error */
@@ -395,7 +372,7 @@ typedef struct
     ADI_ADC_RUN_STATE currentState;
 #if (APP_CFG_USE_TIMESTAMP == 1)
     /** timestamp */
-    uint32_t timestamp[ADI_ADC_TIMESTAMP_BUFFER_SIZE];
+    uint32_t *pTimestamp;
 #endif
 } ADI_ADC_RUN_DATA;
 
@@ -444,7 +421,6 @@ ADI_ADC_STATUS adi_adc_Create(ADI_ADC_HANDLE *phAdc, void *pStateMemory, uint32_
  * #ADI_ADC_STATUS_NULL_PTR \n
  * #ADI_ADC_STATUS_INVALID_NUM_ADC \n
  * #ADI_ADC_STATUS_INVALID_ADC_TYPE \n
- * #ADI_ADC_STATUS_INVALID_NUM_SAMPLES_IN_BLOCK
  */
 ADI_ADC_STATUS adi_adc_Init(ADI_ADC_HANDLE hAdc, ADI_ADC_CONFIG *pConfig);
 
@@ -460,7 +436,6 @@ ADI_ADC_STATUS adi_adc_Init(ADI_ADC_HANDLE hAdc, ADI_ADC_CONFIG *pConfig);
  * #ADI_ADC_STATUS_NULL_PTR \n
  * #ADI_ADC_STATUS_INVALID_NUM_ADC \n
  * #ADI_ADC_STATUS_INVALID_ADC_TYPE \n
- * #ADI_ADC_STATUS_INVALID_NUM_SAMPLES_IN_BLOCK
  */
 ADI_ADC_STATUS adi_adc_SetConfig(ADI_ADC_HANDLE hAdc, ADI_ADC_CONFIG *pConfig);
 
@@ -899,6 +874,39 @@ ADI_ADC_STATUS adi_adcutil_PopulateSamplingRate(uint32_t clkIn, uint32_t samplin
  */
 uint32_t adi_adcutil_ExtractChannel(int32_t *pSrc, uint32_t numSamples, uint32_t numChannels,
                                     uint32_t channelMask, int32_t *pDst);
+
+/**
+ * @brief Converts raw ADC codes to floating-point sample values.
+ *
+ * This function takes raw ADC codes from the input buffer and scales them
+ * down by corresponding ADC Full Scale Code to floating-point sample values,
+ * which are stored in the output buffer. The number of frames to process is
+ * specified by the caller.
+ *
+ * @param[in]  hAdc       Handle to ADC Service Instance.
+ * @param[in]  pInBuff    Pointer to the input buffer containing raw ADC codes.
+ * @param[out] pOutBuff   Pointer to the output buffer where converted
+ *                        floating-point sample values will be stored.
+ * @param[in]  numFrames  Number of frames to process.
+ *
+ * @return ADI_ADC_STATUS Status of the operation. Returns success or an
+ *                        appropriate error code.
+ */
+ADI_ADC_STATUS adi_adc_ConvertCodesToSamples(ADI_ADC_HANDLE hAdc, int32_t *pInBuff, float *pOutBuff,
+                                             uint32_t numFrames);
+
+/**
+ * @brief Function to get the number of channels per ADC.
+ *
+ * This function retrieves the number of channels per ADC and puts them in pNumChannels.
+ *
+ * @param[in]  hAdc         - ADC Service handle.
+ * @param[out] pNumChannels - Pointer to a buffer to store the number of channels.
+ *
+ * @return  #ADI_ADC_STATUS_SUCCESS \n
+ *          #ADI_ADC_STATUS_NULL_PTR \n
+ */
+ADI_ADC_STATUS adi_adc_GetChannelsPerAdc(ADI_ADC_HANDLE hAdc, uint8_t *pNumChannels);
 
 /** @} */
 

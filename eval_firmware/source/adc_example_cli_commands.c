@@ -3,11 +3,10 @@
 ******************************************************************************/
 
 /*============= I N C L U D E S =============*/
-#include "cli_commands.h"
+
 #include "adc_example_iio.h"
 #include "adi_cli.h"
 #include "adi_evb.h"
-#include "message.h"
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -310,9 +309,10 @@ int32_t ScanData(int32_t attrLength)
     int32_t status = 0;
     int32_t index = 0;
     int32_t ret = 0;
+    ADC_EXAMPLE *pExample = GetAdcExampleInfo();
     while (index < attrLength)
     {
-        ret = adi_cli_GetChar();
+        adi_cli_GetChar(pExample->pCliInfo->hCli, &ret);
         if (ret != EOF)
         {
             sprintf(&buffer[index], "%c", (int)ret);
@@ -384,7 +384,7 @@ int32_t CmdWriteBuf(Args *pArgs)
     return status;
 }
 
-int32_t CmdGetRig(Args *pArgs)
+int32_t CmdGetTrig(Args *pArgs)
 {
     int32_t status = 0;
     int32_t value;
@@ -406,7 +406,7 @@ int32_t CmdGetRig(Args *pArgs)
     return status;
 }
 
-int32_t CmdSetRig(Args *pArgs)
+int32_t CmdSetTrig(Args *pArgs)
 {
     int32_t status = 0;
     if (pArgs->c == 0)

@@ -187,6 +187,8 @@ typedef struct
     uint32_t stateMemory[ADI_CLI_STATE_MEM_NUM_BYTES / 4];
     /** temporary memory for CLI Service */
     uint32_t tempMemory[ADI_CLI_TEMP_MEM_NUM_BYTES / 4];
+    /** Command buffer */
+    char command[APP_CFG_CLI_MAX_CMD_LENGTH];
 } EXAMPLE_CLI_INFO;
 
 /**
