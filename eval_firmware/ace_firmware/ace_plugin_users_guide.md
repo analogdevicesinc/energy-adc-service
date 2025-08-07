@@ -15,6 +15,7 @@
    - [ACE Download](https://www.analog.com/ace)
    - Plugins: Board.ADEMA127, Chip.ADEMA127
    - See [ACE documentation](https://wiki.analog.com/resources/tools-software/ace) and [QuickStart](https://wiki.analog.com/resources/tools-software/ace/userguide/quickstart).
+   - Pre-release plugins (ACEZIP) via [myAnalog](https://my.analog.com) (contact ADI).
 
 4. **Recommended Versions**
 
@@ -35,9 +36,10 @@
    - Plug the debugger into your PC. The PC should detect the board as an STLINK port.
 
 3. **Flash the Hex File:**
+   - Double-click the ADEMA127 ACE plugin (.acezip) to open ACE. The plugin is installed in C:\ProgramData\Analog Devices\ACE\Plugins\Board.ADEMA127.x.x.x-dev.x
+    unless you have set the plugins installation folder to a different one during ACE installation.
+   - Firmware is located at content\ace_firmware_gcc.hex
    
-   - Prebuilt firmware is located at **<plugin_install_directory>**\Board.ADEMA127.x.x.x\content\ace_firmware_gcc.hex. By default, **<plugin_install_directory>** is **C:\ProgramData\Analog Devices\ACE\Plugins** unless it is set to a different folder during ACE installation.
-   - Alternatively, build the firmware using [readme.md](readme.md).
    - Use the STM32CubeProgrammer GUI to flash the `.hex` file.
    - Alternatively, use the command line to load firmware using STM32CubeProgrammer:
      ```sh
@@ -53,7 +55,7 @@
 
 ## 3. Configure serial communication settings
 
-1. Open ACE.
+1. Double-click the ADEMA127 ACE plugin (.acezip) to open ACE.
 2. Click 'Add Hardware'.
 3. Go to 'Serial Ports' and click '+' to add:
    - Number: Port number of USB to UART bridge
@@ -62,9 +64,9 @@
    - Protocol: IIO
 4. Click 'Ok'.
 5. Reset the board
-6. "EVAL_ADEMA127" should appear in ACE within 3 seconds.
+2. "EVAL_ADEMA127 Unverified" should appear in ACE within 3 seconds.
    - If not, click 'Refresh attached hardware' and wait up to 3 seconds.
-7. Double-click the device to open the EVAL_ADEMA127 window, then double-click 'ADEMA127' to access the plugin.
+3. Double-click the device to open the EVAL_ADEMA127 window, then double-click 'ADEMA127' to access the plugin.
 
 
 ---
@@ -73,8 +75,9 @@
 
 ### A. Register Access
 
-1. Click `apply_settings` button to initialize ADC with recommended settings.
-2. Read/write ADEMA127 registers in 'Proceed to Memory Map':
+1. Click `initialise_adc` to initialize ADC with default settings.
+2. To change global attributes, press `initialise_adc` again.
+3. Read/write ADEMA127 registers in 'Proceed to Memory Map':
    ![Memory Map](./ace_plugin_images/adema127_memory_map.png)
 
 ### B. Sample Collection & Analysis
@@ -91,7 +94,7 @@
 ![Chip View](./ace_plugin_images/ADEMA127.png)
 
 - **Chan Selector**: Choose one of 7 channels.
-- **Gain/Offset/Shift/XtGain/XtAggressor**: Enter values for each channel.
+- **Gain/Offset/Shift**: Enter values for each channel.
 - **Datapath Config**: Enable/disable options via checkboxes.
 - **Scale**: Set scale in mV for analysis display.
 - **Datarate Configuration**: Configure data rate using dropdowns; click 'Apply Changes'.
@@ -108,6 +111,7 @@
 - `firmware_version`: ADC service version
 - `build_id`: Git commit ID
 - `board_type`: Type of ADC board (default: EVAL-ADEMA127KTZ)
+- `hpf_cutoff_frequency`: Sets filter coefficients
 - `choose_settings`: Load recommended/default settings
 - `apply_settings`: Apply chosen settings
 - `start-tamper-detect` / `stop-tamper-detect`: Enable/disable Tamper Detection Mode

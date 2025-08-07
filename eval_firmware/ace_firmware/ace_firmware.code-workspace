@@ -84,7 +84,7 @@
 		"mcuName": "STM32H563ZITx",
 		"cmake.configureArgs": [
 			//Pass compile args to cmake here.
-			"-DSDK=C:/STM32Cube/Repository/STM32Cube_FW_H5_V1.3.0/Drivers/STM32H5xx_HAL_Driver",
+			
 		],
 	}
 }

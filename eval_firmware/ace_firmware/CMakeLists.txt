@@ -35,7 +35,7 @@ project(${CMAKE_PROJECT_NAME})
 set(APP_SRC ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_iio.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_tdm.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_attributes.c
-               ${PROJECT_ROOT_DIR}/eval_firmware/source/cli_commands.c
+               ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_cli_commands.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/main.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_no_os_config.c
                ${ADE_REGISTERS_DIR}/crc/source/ade_crc.c
@@ -51,7 +51,7 @@ set(ADCSIF_SRC
 
 
 # ------------------------------------------------------------------------------
-# Include Directories 
+# Include Directories
 # ------------------------------------------------------------------------------
 set(APP_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
