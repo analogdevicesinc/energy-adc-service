@@ -12,6 +12,7 @@
 #define __ADC_EXAMPLE_IIO_H__
 
 #include "adc_example.h"
+#include "adc_example_attributes.h"
 #include "adc_service_interface.h"
 #include "adi_adc.h"
 #include "adi_adc_memory.h"
@@ -26,12 +27,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/** Macros for stringification */
-#define XSTR(s) #s
-
-/** Macros for stringification */
-#define STR(s) XSTR(s)
 
 /**
  * @brief The full-scale code value for the ADC.
@@ -51,14 +46,6 @@ extern "C" {
 /** IEC 3Phase Meter Board current scale */
 #define IEC_3PHASE_METER_I_SCALE (((float)9398 / AD_ADC_FULL_SCALE_CODE) * ADEMA127_IC_SCALE)
 
-/** Maximum number of samples to store
- */
-#ifdef BOARD_CFG_USE_SMALL_BUFFER
-#define ADC_EXM_MAX_SAMPLES_TO_STORE 28000
-#else
-#define ADC_EXM_MAX_SAMPLES_TO_STORE 64000
-#endif
-
 /** Number of data storage bits (needed for IIO client to plot ADC data) */
 #define CHN_STORAGE_BITS (APP_CFG_BYTES_PER_SAMPLE * 8)
 
@@ -73,9 +60,6 @@ extern "C" {
 
 /** Firmware version - last 6 digits of git commit */
 #define FIRMWARE_VERSION "abcedef"
-
-/** No of supported EVBs in ADEMA127 Plugin */
-#define NUM_EVB_AVAILABLE 2
 
 /** Number of real bits (needed for IIO client to plot ADC data) */
 #define CHN_REAL_BITS (32)
@@ -92,74 +76,13 @@ extern "C" {
 /** Macro for the xml buffer size */
 #define XML_DESC_BUFFER_SIZE 8000
 
-/**
- * Enum holding the attribute IDs
- */
-typedef enum
-{
-    /** ADC service version */
-    ADC_EXAMPLE_ATTR_ID_VERSION,
-    /** ADC service build id : git commit ID */
-    ADC_EXAMPLE_ATR_ID_BUILD_ID,
-    /** EVB Type */
-    ADC_EXAMPLE_ATTR_ID_EVB_TYPE,
-    /** Available EVB Type */
-    ADC_EXAMPLE_ATTR_ID_EVB_TYPE_AVAIL,
-    /** Channel Gain */
-    ADC_EXAMPLE_ATTR_ID_CHAN_GAIN,
-    /** Channel Offset */
-    ADC_EXAMPLE_ATTR_ID_CHAN_OFFSET,
-    /** ADC datapath config */
-    ADC_EXAMPLE_ATTR_ID_DATAPATH_CONFIG,
-    /** Adc channel scale */
-    ADC_EXAMPLE_ATTR_ID_CHAN_SCALE,
-    /** Adc channel shift */
-    ADC_EXAMPLE_ATTR_ID_CHAN_SHIFT,
-    /** Choose ADC example settings */
-    ADC_EXAMPLE_ATTR_ID_CHOOSE_SETTINGS,
-    /** Available settings */
-    ADC_EXAMPLE_ATTR_ID_CHOOSE_SETTINGS_AVAIL,
-    /** Apply settings */
-    ADC_EXAMPLE_ATTR_ID_APPLY_SETTING,
-    /** Available aplly settings */
-    ADC_EXAMPLE_ATTR_ID_APPLY_SETTING_AVAIL,
-    /** Channel integer sample delay */
-    ADC_EXAMPLE_ATTR_ID_CHAN_INTEGER_SAMPLE_DELAY,
-    /** Initiate Tamper detection */
-    ADC_EXAMPLE_ATTR_ID_START_DETECT,
-    /** Available Initiate Tamper detection */
-    ADC_EXAMPLE_ATTR_ID_START_DETECT_AVAIL,
-    /** Stop Tamper detection */
-    ADC_EXAMPLE_ATTR_ID_STOP_DETECT,
-    /** Available Stop Tamper detection */
-    ADC_EXAMPLE_ATTR_ID_STOP_DETECT_AVAIL,
-    /** Tamper detection count  */
-    ADC_EXAMPLE_ATTR_ID_TAMPER_CNT,
-    /** Channel XT Gain */
-    ADC_EXAMPLE_ATTR_ID_CHAN_XT_GAIN,
-    /** Channel XT Aggressor */
-    ADC_EXAMPLE_ATTR_ID_CHAN_XT_AGGRESSOR,
-} ADC_EXAMPLE_ATTR_ID;
+/** List of EVBs supported */
+extern char *pEvbAvailable[];
 
-/**
- * HPF Cutoff frequencies
- */
-typedef enum
-{
-    ADC_EXAMPLE_HPF_CUTOFF_FREQ_10HZ,
-    ADC_EXAMPLE_HPF_CUTOFF_FREQ_5HZ,
-    ADC_EXAMPLE_HPF_CUTOFF_FREQ_2_5HZ,
-    ADC_EXAMPLE_HPF_CUTOFF_FREQ_1_5HZ,
-} ADC_EXAMPLE_HPF_CUTOFF_FREQ;
+/** List of ADC Example settings available */
+extern char *pAdcExampleSettings[];
 
-/**
- * HPF Cutoff frequencies
- */
-typedef enum
-{
-    ADC_EXAMPLE_RECOMMENDED_SETTINGS,
-    ADC_EXAMPLE_DEFAULT_ADEMA127,
-} ADC_EXAMPLE_SETTINGS_TYPE;
+/*============= D A T A  T Y P E S =============*/
 
 /**
  * Structure for ADC example.
@@ -197,63 +120,26 @@ typedef struct
  */
 typedef struct
 {
-    /** Handle to board */
+    /** Pointer to board handle */
     void *hEvb;
-    /** evb type - an IIO example param */
-    char *pEvbType;
     /** Board config */
     ADI_EVB_CONFIG evbConfig;
-    /** Communication info */
-    EXAMPLE_CLI_INFO *pCliInfo;
-    /** Number of sampls collected */
-    uint32_t numSamplesCollected;
     /**  ADC interface info */
     ADC_INTERFACE_INFO *pAdcIf;
-    /** ADC types*/
-    ADI_ADC_TYPE adcTypes[APP_CFG_MAX_NUM_ADC];
-    /** Holds register value read from ADC*/
-    uint8_t registerValue[2 * APP_CFG_MAX_NUM_ADC];
-    /** Flag to indicate to start reading the adc samples */
-    bool collectSamplesFlag;
+    /** Example attributes info */
+    ADC_EXAMPLE_ATTR_INFO adcExampleAttrInfo;
     /** Structure to hold info on samples to send */
     EXAMPLE_SAMPLES_BUFFER samplesBuffer;
-    /** channel config */
-    uint32_t chanConfig;
-    /** IIO Example params */
-    /** reg address */
-    uint16_t addr;
-    /** value to write to a reg */
-    uint8_t value;
-    /** adc index */
-    int8_t adcIndex;
-    /** adc type */
-    ADI_ADC_TYPE adcVariant;
-    /** num of ADCs */
-    uint8_t numAdc;
-    /** num of samples required to be collected */
-    uint32_t numSamplesRequired;
-    /** Buffer to store block of samples from all channels and copy to no_os buffer */
+    /** Buffer to store block of samples from all channels from samplesBuffer and send over uart */
     int32_t blockBuffer[APP_CFG_MAX_SAMPLE_BLOCK_SIZE * APP_CFG_MAX_NUM_CHANNELS];
-    /** Hpf cutoff frequency in Hz */
-    char *pHpfCutoffFreq;
-    /** Example settings */
-    char *pExampleSettings;
-    /** ADC example settings type */
-    ADC_EXAMPLE_SETTINGS_TYPE settings;
-    /** Datapath params struct for 1 ADC */
-    ADI_ADC_DSP_DATAPATH_PARAMS adcDatapathParams;
+    /** Cli info */
+    EXAMPLE_CLI_INFO *pCliInfo;
     /** Trigger Device */
     int32_t triggerDevice;
-    /** value to be return when the DEBUG is enabled */
-    int32_t debugAddress;
     /** Channel mask */
     uint32_t channelMask;
     /** sample count */
     int32_t sampleCount;
-    /** channel scale */
-    double adcChanScale[APP_CFG_MAX_NUM_CHANNELS];
-    /** adc sampling rate */
-    uint32_t samplingRate;
     /** IIO information */
     IioDesc iioDesc;
     /** XML length */
@@ -266,8 +152,22 @@ typedef struct
     DeviceParams deviceParams;
     /** Context attributes */
     CtxAttrType ctxAttribute;
+    /** Board-Related Configs */
+    ADC_BOARD_CONFIG adcBoardConfig;
 
 } ADC_EXAMPLE;
+
+/**
+ * @brief Initialises Com, Crc and Scomm services
+ * @return status
+ */
+ADC_EXAMPLE_STATUS InitServices(void);
+
+/**
+ * @brief Process commands
+ * @return status
+ */
+ADC_EXAMPLE_STATUS ProcessCommand(void);
 
 /**
  * Collects the samples
@@ -310,65 +210,12 @@ uint32_t GetAdcChanAttr(uint16_t loReg, uint16_t mdReg, uint16_t hiReg);
 ADI_ADC_STATUS SetAdcChanAttr(uint16_t loReg, uint16_t mdReg, uint16_t hiReg, uint32_t writeVal);
 
 /**
- * @brief Write to a register
- *
- * @param address - Register address
- * @param value - Value to be written
- * @return int32_t - Status
- */
-int32_t DebugRegWrite(uint32_t address, uint32_t value);
-
-/**
- * @brief Get the attribute value
- *
- * @param attrId - Attribute ID
- * @param pChannel - pointer to channel number
- * @param pDst - Pointer to the destination buffer
- * @return int32_t - Status
- */
-int IIoAttrGet(int32_t attrId, int32_t *pChannel, char *pDst);
-
-/**
- * @brief Set the attribute value
- *
- * @param attrId - Attribute ID
- * @param pChanIdx - pointer to Channel number
- * @param pSrc - Value to be set
- * @return int32_t - Status
- */
-int IioAttrSet(int32_t attrId, uint8_t *pChanIdx, char *pSrc);
-
-/**
- * @brief Read from a register
- *
- * @param address - Register address
- * @param pDst - Pointer to the destination buffer
- * @return int32_t - Status
- */
-int32_t DebugRegRead(uint32_t address, uint32_t *pDst);
-
-/**
  * @brief Submit the buffer
  *
  * @param numBytes - Number of bytes
  * @return int32_t - Status
  */
 int32_t IioSubmitBuffer(int32_t numBytes);
-/**
- * @brief Get the channel attribute ID
- *
- * @param pAttrName - Attribute name
- * @return int32_t - Attribute ID
- */
-int32_t GetChannelAttributeId(char *pAttrName);
-
-/**
- * @brief Get the global attribute ID
- *
- * @param pAttrName - Attribute name
- * @return int32_t - Attribute ID
- */
-int32_t GetGlobalAttributeId(char *pAttrName);
 
 /**
  * @brief Close the device
@@ -376,6 +223,59 @@ int32_t GetGlobalAttributeId(char *pAttrName);
  * @return int32_t - Status
  */
 int32_t Close(void);
+
+/**
+ * @brief Gets pointer to ADC_EXAMPLE_IIO structure.
+ * @return pointer to ADC_EXAMPLE_IIO structure.
+ */
+ADC_EXAMPLE *GetAdcExampleInfo(void);
+
+/**
+ * @brief Gets pointer to ADC_EXAMPLE_ATTR_INFO structure.
+ * @return pointer to ADC_EXAMPLE_ATTR_INFO structure.
+ */
+ADC_EXAMPLE_ATTR_INFO *GetAdcExampleAttrInfo(void);
+
+/**
+ * @brief Gets IIO attribute value
+ * @param attrId Attribute ID
+ * @param pChanIdx Channel index
+ * @param pDst Destination string buffer
+ * @return status
+ */
+int32_t GetIioAttribute(int32_t attrId, int32_t *pChanIdx, char *pDst);
+
+/**
+ * @brief Gets string attribute value
+ * @param attrId Attribute ID
+ * @param pChanIdx Channel index
+ * @param pDst Destination string buffer
+ * @return status
+ */
+int32_t GetStringAttribute(int32_t attrId, int32_t *pChanIdx, char *pDst);
+
+/**
+ * @brief Gets attr data type
+ * @param attrId ID
+ * @return ADI_ATTR_TYPE datatype
+ */
+ADI_ATTR_TYPE GetAttributeDataType(int32_t attrId);
+
+/**
+ * @brief Gets avail attribute value
+ * @param attrId Attribute ID
+ * @param pDst Destination string buffer
+ * @return status
+ */
+int32_t GetAvailableAttribute(uint32_t attrId, char *pDst);
+
+/**
+ * @brief Formats string
+ * @param pDst Attribute name
+ * @param pValue Pointer to value
+ * @param attrType Attribute data type
+ */
+void FormatString(char *pDst, uint8_t *pValue, ADI_ATTR_TYPE attrType);
 
 #ifdef __cplusplus
 }

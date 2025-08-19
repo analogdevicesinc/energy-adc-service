@@ -84,6 +84,8 @@ extern "C" {
 #define DISABLE_ASCII_OUT 1
 /** Enable HW CRC */
 #define APP_CFG_ENABLE_HW_CRC 1
+/** Enable DSP backup for saving and reloading DSP RAM */
+#define APP_CFG_ENABLE_DSP_BACKUP 0
 
 #ifdef __cplusplus
 }

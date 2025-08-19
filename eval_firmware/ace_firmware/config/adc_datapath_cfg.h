@@ -23,16 +23,6 @@ extern "C" {
 #define APP_CFG_ADC_MCLK 16384000
 
 /**
- * Prescaler value for the ADC clock.
- */
-#define APP_CFG_ADC_PRESCALER 3
-
-/**
- * Decimation rate for the ADC.
- */
-#define APP_CFG_ADC_DECIMATION_RATE 2
-
-/**
  * Decimation by 2 setting for the ADC.
  */
 #define APP_CFG_ADC_DECIMATION_BY2 1

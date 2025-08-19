@@ -53,6 +53,44 @@ ADC_EXAMPLE_STATUS InitServices(void);
  */
 ADC_EXAMPLE_STATUS ProcessCommand(void);
 
+/**
+ * @brief  SPI Rx callback.
+ */
+void AdcSpiRxCallback(void);
+
+/**
+ * @brief  Interface to GPIO callback.
+ * @param[in]  port - Port.
+ * @param[in]  pinFlag - pin flag.
+ */
+void AdcDreadyCallback(uint32_t port, uint32_t pinFlag);
+
+/**
+ * @brief  Function that collect samples.
+ * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  channelMask - channel mask.
+ * @param[in]  numSamplesRequired - number of samples required.
+ * @param[out]  pSamples - pointer to buffer.
+ * @return Result of the command
+ */
+ADI_ADC_STATUS AdcExmCollectSamples(ADC_INTERFACE_INFO *pInfo, uint32_t channelMask,
+                                    uint32_t numSamplesRequired, int32_t *pSamples);
+
+/**
+ * @brief ADC callback function.
+ * @param[in] hUser - user handle.
+ * @param[in] adcEvent - ADC event.
+ * @return Result of the command
+ */
+
+ADI_ADC_STATUS AdcExmAdcCallback(void *hUser, uint32_t adcEvent);
+
+/**
+ * @brief Gets pointer to Board config structure.
+ * @return pointer to Board config structure.
+ */
+ADC_BOARD_CONFIG *AdcExmGetBoardConfig(void);
+
 #ifdef __cplusplus
 }
 #endif

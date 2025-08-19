@@ -21,8 +21,10 @@ static volatile int32_t dready = 0;
 static volatile int32_t spiComplete = 0;
 static ADC_INTERFACE_INFO adcsIf;
 static ADI_EVB_CONFIG evbConfig;
+static ADC_BOARD_CONFIG adcBoardConfig;
 static void *hEvb;
 
+static void PopulateBoardConfig(ADC_BOARD_CONFIG *pAdcBoardConfig);
 static void DreadyCallback(uint32_t port, uint32_t pin);
 static void SpiRxCallback(void);
 static void PrintOutput(int32_t *pSamples, int32_t numSamples);
@@ -36,7 +38,6 @@ int main()
     ADC_INTERFACE_INFO *pAdcsIf = &adcsIf;
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     int32_t status = 0;
-    ADI_ADC_CONFIG *pAdcCfg = &pAdcsIf->adcCfg;
     int32_t numAdc;
     int32_t *pSamples = &adcSamples[0];
     uint32_t channelMask = 0x7F;
@@ -51,23 +52,10 @@ int main()
 
     /* Create ADC Service */
     AdcIfCreateService(pAdcsIf);
-    for (i = 0; i < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; i++)
-    {
-        pAdcsIf->adcBoardConfig.voltageSlots[i] = voltageSlots[i];
-    }
-    for (i = 0; i < APP_CFG_MAX_NUM_CURRENT_CHANNELS; i++)
-    {
-        pAdcsIf->adcBoardConfig.currentSlots[i] = currentSlots[i];
-    }
-    pAdcCfg->numSamplesInBlock = APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE;
-    numAdc = 1;
-    pAdcsIf->adcType[0] = ADI_ADC_TYPE_ADEMA127;
-    pAdcsIf->adcSamplingRate = APP_CFG_ADC_SAMPLING_RATE;
-    pAdcsIf->clkIn = APP_CFG_ADC_MCLK;
-    pAdcsIf->decimateBy2 = APP_CFG_ADC_DECIMATION_BY2;
-    pAdcsIf->adcStreamMode = ADI_ADC_STREAM_MODE_NORM;
 
-    status = AdcIfInitService(pAdcsIf, numAdc, &pAdcsIf->adcType[0]);
+    PopulateBoardConfig(&adcBoardConfig);
+    pAdcsIf->pfCallback = NULL;
+    status = AdcIfInitService(pAdcsIf, &adcBoardConfig);
     status = AdcIfStartCapture(pAdcsIf);
 
     if (status == 0)
@@ -91,7 +79,7 @@ int main()
                 {
                     /* Extract the required channels from the sample */
                     numSamples += adi_adcutil_ExtractChannel(
-                        &pAdcsIf->adcSamples[0], pAdcCfg->numSamplesInBlock,
+                        &pAdcsIf->adcSamples[0], pAdcsIf->adcCfg.numSamplesInBlock,
                         pAdcsIf->runInfo.totalChannels, channelMask, &pSamples[numSamples]);
                 }
             }
@@ -163,4 +151,37 @@ void DreadyCallback(uint32_t port, uint32_t pin)
 void SpiRxCallback()
 {
     spiComplete = 1;
+}
+
+/**
+ * @brief Populate ADC interface inputs
+ */
+static void PopulateBoardConfig(ADC_BOARD_CONFIG *pAdcBoardConfig)
+{
+    uint8_t i = 0;
+    pAdcBoardConfig->numAdc = 1;
+    for (i = 0; i < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; i++)
+    {
+        pAdcBoardConfig->voltageSlots[i] = voltageSlots[i];
+    }
+    for (i = 0; i < APP_CFG_MAX_NUM_CURRENT_CHANNELS; i++)
+    {
+        pAdcBoardConfig->currentSlots[i] = currentSlots[i];
+    }
+
+    for (i = 0; i < (pAdcBoardConfig->numAdc); i++)
+    {
+        pAdcBoardConfig->adcType[i] = ADI_ADC_TYPE_ADEMA127;
+    }
+    pAdcBoardConfig->adcStreamMode = ADI_ADC_STREAM_MODE_NORM;
+    pAdcBoardConfig->adcSamplingRate = APP_CFG_ADC_SAMPLING_RATE;
+    pAdcBoardConfig->clkIn = APP_CFG_ADC_MCLK;
+    pAdcBoardConfig->decimateBy2 = APP_CFG_ADC_DECIMATION_BY2;
+}
+
+ADI_ADC_STATUS AdcIfWaitAdcResponse(ADC_INTERFACE_INFO *pInfo)
+{
+    // Not required for this example
+    (void)pInfo; // To resolve the warning for unused parameter
+    return ADI_ADC_STATUS_SUCCESS;
 }

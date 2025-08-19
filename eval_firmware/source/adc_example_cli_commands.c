@@ -3,7 +3,8 @@
 ******************************************************************************/
 
 /*============= I N C L U D E S =============*/
-
+#include "adc_example.h"
+#include "adc_example_attributes.h"
 #include "adc_example_iio.h"
 #include "adi_cli.h"
 #include "adi_evb.h"
@@ -20,6 +21,7 @@ static char *debugTypes[] = {"debug"};
 #define MAX_PARAMETER_LENGTH 512
 /** Buffer to store the command parameter */
 static char commandParam[MAX_PARAMETER_LENGTH];
+/** Max buffer size for iio commands */
 #define BUFFER_SIZE 1024
 
 /** uart Info */
@@ -60,7 +62,6 @@ int32_t CmdPrint(Args *pArgs)
     {
         status = -1;
     }
-
     return status;
 }
 
@@ -141,6 +142,7 @@ int32_t CmdRead(Args *pArgs)
     char attr[20];
     char *pParam = &commandParam[0];
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
+    ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
     if (pArgs->c >= 1 && pArgs->c <= 4)
     {
         buffer[0] = '\0';
@@ -159,7 +161,7 @@ int32_t CmdRead(Args *pArgs)
                     {
                         sscanf(pArgs->v[2].pS, "voltage%ld", &chanNum);
                         attrId = GetChannelAttributeId(pArgs->v[3].pS);
-                        IIoAttrGet(attrId, &chanNum, buffer);
+                        GetIioAttribute(attrId, &chanNum, buffer);
                     }
                     else
                     {
@@ -181,7 +183,7 @@ int32_t CmdRead(Args *pArgs)
                     sscanf(pArgs->v[2].pS, "%s", &attr[0]);
                     if (strcmp(&attr[0], "direct_reg_access") == 0)
                     {
-                        DebugRegRead(pExample->debugAddress, &debugReadVal);
+                        DebugRegRead(pExampleAttrInfo->debugAddress, &debugReadVal);
                         sprintf(buffer, "%ld", debugReadVal);
                     }
                     else
@@ -198,7 +200,7 @@ int32_t CmdRead(Args *pArgs)
             else if (pArgs->c == 2)
             {
                 attrId = GetGlobalAttributeId(pArgs->v[1].pS);
-                IIoAttrGet(attrId, &chanNum, buffer);
+                GetIioAttribute(attrId, &chanNum, buffer);
             }
         }
         length = strlen(buffer);
@@ -208,7 +210,6 @@ int32_t CmdRead(Args *pArgs)
     {
         status = -1;
     }
-
     return status;
 }
 
@@ -221,7 +222,7 @@ int32_t CmdWrite(Args *pArgs)
     int32_t attrId = 0;
     int32_t attrLength;
     char attr[20];
-
+    uint8_t valueSize;
     char *pParam = &commandParam[0];
     if (pArgs->c >= 2 && pArgs->c <= 5)
     {
@@ -281,7 +282,7 @@ int32_t CmdWrite(Args *pArgs)
                 sscanf(pArgs->v[2].pS, "%" PRIi32, &attrLength);
             }
 
-            // Read the values from the circular Buffer
+            // Read the attribute value from the circular Buffer
             ScanData(attrLength);
             // For the Debug type, the [addr, val] prefixes with 0x. For the other attributes,
             // numbers is in decimal format.
@@ -291,7 +292,10 @@ int32_t CmdWrite(Args *pArgs)
             }
             else
             {
-                IioAttrSet(attrId, &chanNum, buffer);
+                // From buffer, extract the attribute value
+                ExtractAttributeValue(buffer, attrId, &valueSize);
+                // Set the attribute value
+                SetAttribute(attrId, &chanNum, (int8_t *)buffer, valueSize);
             }
         }
         INFO_MSG_RAW("%d\n", attrLength)
@@ -300,7 +304,6 @@ int32_t CmdWrite(Args *pArgs)
     {
         status = -1;
     }
-
     return status;
 }
 
@@ -310,6 +313,7 @@ int32_t ScanData(int32_t attrLength)
     int32_t index = 0;
     int32_t ret = 0;
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
+    ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
     while (index < attrLength)
     {
         adi_cli_GetChar(pExample->pCliInfo->hCli, &ret);
@@ -328,6 +332,7 @@ int32_t WriteToDebugReg()
     int32_t numBytes;
     uint32_t address, value;
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
+    ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
     numBytes = sscanf(buffer, "\n0x%" SCNx32 " 0x%" SCNx32, &address, &value);
     if (numBytes == 2)
     {
@@ -335,7 +340,7 @@ int32_t WriteToDebugReg()
     }
     else
     {
-        numBytes = sscanf(buffer, "%" SCNd32, &pExample->debugAddress);
+        numBytes = sscanf(buffer, "%" SCNd32, &pExampleAttrInfo->debugAddress);
     }
     return status;
 }

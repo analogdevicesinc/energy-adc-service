@@ -31,19 +31,31 @@ extern "C" {
 #define ADI_ADC_STATE_MEM_NUM_BYTES_4XADEMA127_4XBLOCKSIZE                                         \
     ADI_ADC_STATE_MEM_NUM_BYTES(4, 7, 28, 4, 4)
 
-/** State memory required for 1 ADEMA127, block size = 1, Max sample delay= 0. */
+/** State memory required for 1 ADEMA127, block size = 1, Max sample delay = 4. */
 #define ADI_ADC_STATE_MEM_NUM_BYTES_1XADEMA127_1XBLOCKSIZE                                         \
-    ADI_ADC_STATE_MEM_NUM_BYTES(1, 7, 7, 1, 0)
+    ADI_ADC_STATE_MEM_NUM_BYTES(1, 7, 7, 1, 4)
+
+/** State memory required for 1 ADEMA124, block size = 1, Max sample delay = 4. */
+#define ADI_ADC_STATE_MEM_NUM_BYTES_1XADEMA124_1XBLOCKSIZE                                         \
+    ADI_ADC_STATE_MEM_NUM_BYTES(1, 4, 4, 1, 4)
+
+/** State memory required for 1 ADE91XX, block size = 1, Max sample delay = 4. */
+#define ADI_ADC_STATE_MEM_NUM_BYTES_1XADE91XX_1XBLOCKSIZE ADI_ADC_STATE_MEM_NUM_BYTES(1, 3, 3, 1, 4)
 
 /** State memory required in bytes for the library. */
 #define ADI_ADC_STATE_MEM_NUM_BYTES(numAdc, maxNumChannelPerAdc, maxNumChannel, blockSize,         \
                                     maxSampleDelay)                                                \
-    (sizeof(ADI_ADC_INFO) +                                                                        \
-     ((numAdc * 113) + (maxNumChannelPerAdc * 7) + (maxNumChannel * 6) +                           \
-      (blockSize * numAdc * 1) + (numAdc * maxNumChannel * 2) + (numAdc * (blockSize + 2) * 35) +  \
-      (maxNumChannel * (maxSampleDelay + 1))) *                                                    \
+    (sizeof(ADI_ADC_INFO) + (3 * (numAdc)) * sizeof(uint32_t) +                                    \
+     (maxNumChannelPerAdc) * sizeof(uint32_t) + (2 * (maxNumChannel)) * sizeof(uint32_t) +         \
+     (3 * (ADI_ADC_LONG_FRAME_NBYTES_MAX * numAdc)) * sizeof(uint32_t) +                           \
+     (2 * (numAdc * maxNumChannel)) * sizeof(uint32_t) +                                           \
+     ((sizeof(ADC_TYPE_CONFIG) * numAdc + 3) / sizeof(uint32_t)) * sizeof(uint32_t) +              \
+     ((4 + ADI_ADC_LONG_FRAME_NBYTES_MAX) * (numAdc * (blockSize + 2))) * sizeof(uint32_t) +       \
+     (1 + ((sizeof(ADI_ADC_DELAY_BUFFER) + 3) / sizeof(uint32_t))) * maxNumChannel *               \
          sizeof(uint32_t) +                                                                        \
-     3)
+     (maxNumChannel * (maxSampleDelay + 1)) * sizeof(uint32_t) +                                   \
+     (numAdc * blockSize) * sizeof(uint32_t) + 3 /* Alignment */                                   \
+    )
 
 /**
  * @}

@@ -23,16 +23,6 @@ extern "C" {
 #define APP_CFG_ADC_MCLK 16384000
 
 /**
- * Prescaler value for the ADC clock.
- */
-#define APP_CFG_ADC_PRESCALER 3
-
-/**
- * Decimation rate for the ADC.
- */
-#define APP_CFG_ADC_DECIMATION_RATE 2
-
-/**
  * Decimation by 2 setting for the ADC.
  */
 #define APP_CFG_ADC_DECIMATION_BY2 1
@@ -44,6 +34,11 @@ extern "C" {
  * 0V - others
  */
 #define APP_CFG_ADC_CMI 0x33
+
+/**
+ * ADC_INV value.
+ */
+#define APP_CFG_ADC_INV 0x33
 
 /**
  * Gain setting for the ADC. Sets ADC_GAIN register.

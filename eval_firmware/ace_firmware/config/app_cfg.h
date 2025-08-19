@@ -147,6 +147,8 @@ typedef enum
 #define APP_CFG_ENABLE_HW_CRC 1
 /** Size of sample delay buffer. */
 #define APP_CFG_DELAY_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_DELAY + 1)
+/** Enable DSP backup for saving and reloading DSP RAM */
+#define APP_CFG_ENABLE_DSP_BACKUP 1
 
 #ifdef __cplusplus
 }

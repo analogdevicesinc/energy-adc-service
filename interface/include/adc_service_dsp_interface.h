@@ -27,10 +27,12 @@ extern "C" {
  * @brief Sets the ADC DSP datapath structure with the default values as mentioned configuration
  * file.
  * @param[in]  pInfo - pointer to interface info structure.
- * @param[in]  pConfig - ADC Configs
+ * @param[in]  pAdcBoardConfig - Pointer to board config.
+ * @param[in]  numAdc - Number of ADCs.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, ADI_ADC_CONFIG *pConfig);
+ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAdcBoardConfig,
+                                   uint8_t numAdc);
 
 /**
  * @brief Writes to ADDR_ADEMA127_MMR_ACCESS_EXTENDED_MMAP ADC to access uDSP memory.
@@ -466,6 +468,15 @@ ADI_ADC_STATUS AdcIfSetCompCoeff(ADC_INTERFACE_INFO *pInfo, float *pCoeffs[], ui
  */
 ADI_ADC_STATUS AdcIfGetCompCoeff(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanIdx, uint8_t numChan,
                                  int8_t adcIdx, float *pCoeffs[]);
+
+/**
+ * @brief Retrieves compensation filter coefficients for specified ADC channels.
+ *
+ * @param[in]  pAdcRegParams     Pointer to the ADC datapath register params.
+ *
+ * @return ADI_ADC_STATUS_SUCCESS if successful, error code otherwise.
+ */
+ADI_ADC_STATUS AdcIfResetDatapathParams(ADEMA12X_ADC_PARAMS *pAdcRegParams);
 
 #ifdef __cplusplus
 }

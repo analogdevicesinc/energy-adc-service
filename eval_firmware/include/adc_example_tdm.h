@@ -4,13 +4,12 @@
 
 /**
  * @file        adc_example_tdm.h
- * @defgroup    ADC_TDM_INTERFACE to ADC Service.
- * @brief       Interface to start and stop tamper detection.
+ * @brief       ADC Example definitions for start and stop tamper detection.
  * @{
  */
 
-#ifndef __ADC_TDM_INTERFACE_H__
-#define __ADC_TDM_INTERFACE_H__
+#ifndef __ADC_EXAMPLE_TDM_H__
+#define __ADC_EXAMPLE_TDM_H__
 
 /*============= I N C L U D E S =============*/
 #include "adi_adc.h"
@@ -36,7 +35,7 @@ int32_t StopTamperDetection(void);
 }
 #endif
 
-#endif /* ADC_TDM_INTERFACE_H_ */
+#endif /* __ADC_EXAMPLE_TDM_H__ */
 /**
  * @}
  */

@@ -14,6 +14,7 @@
 #define __ADC_SERVICE_INTERFACE_H__
 
 /*============= I N C L U D E S =============*/
+#include "adc_datapath_cfg.h"
 #include "adc_service_adapter.h"
 #include "adi_adc.h"
 #include "adi_adc_dsp.h"
@@ -29,12 +30,32 @@ extern "C" {
  * @{
  */
 
-/** Temp memory required for 4 ADEMA127 */
-#define TEMP_MEM_NUM_BYTES_4XADEMA127 TEMP_MEM_NUM_BYTES(4, 28)
+/** Temp memory required */
+#define TEMP_MEM_NUM_BYTES_4XADEMA127                                                              \
+    TEMP_MEM_NUM_BYTES(APP_CFG_MAX_NUM_ADC, APP_CFG_MAX_NUM_CHANNELS_PER_ADC)
 
-/** Temp memory required in interface. */
-#define TEMP_MEM_NUM_BYTES(numAdc, maxNumChannel) (numAdc * maxNumChannel * 48) + 3
-
+/**
+ * @brief Calculates the temporary memory size required for the interface.
+ *
+ * This macro computes the total number of bytes needed for temporary
+ * storage during ADC service processing.
+ *
+ * The formula allocates space for per-ADC and per-channel temporary buffers.
+ * + 3 is added to ensure proper 4-byte alignment when the result is later cast
+ * or divided by `sizeof(uint32_t)`.
+ *
+ * @param numAdc                Number of ADC instances.
+ * @param maxNumChannelPerAdc   Maximum number of channels per ADC.
+ *
+ * @return Total memory size in bytes (including alignment padding).
+ */
+#if APP_CFG_ENABLE_DSP_BACKUP == 1
+#define TEMP_MEM_NUM_BYTES(numAdc, maxNumChannelPerAdc)                                            \
+    (numAdc * maxNumChannelPerAdc * (12 * sizeof(uint32_t))) + 3
+#else
+#define TEMP_MEM_NUM_BYTES(numAdc, maxNumChannelPerAdc)                                            \
+    (numAdc * maxNumChannelPerAdc * (7 * sizeof(uint32_t))) + 3
+#endif
 #ifndef APP_CFG_IGNORE_RX_BUFFER_OVERFLOW
 /** Ignore Rx Buffer Overflow */
 #define APP_CFG_IGNORE_RX_BUFFER_OVERFLOW 1
@@ -60,8 +81,10 @@ typedef struct
     ADI_ADC_DSP_DATAPATH_PARAMS adcDatapathParams;
     /** Dsp Channel Register*/
     ADI_ADC_DSP_CHANNEL_PARAMS adcChannelParams;
+#if APP_CFG_ENABLE_DSP_BACKUP == 1
     /** Dsp Channel registers backup - used to save and reload DSP */
     ADI_ADC_DSP_CHANNEL_PARAMS adcDspBackup;
+#endif
 } ADEMA12X_ADC_PARAMS;
 
 /**
@@ -73,6 +96,21 @@ typedef struct
     uint8_t voltageSlots[APP_CFG_MAX_NUM_VOLTAGE_CHANNELS];
     /** Current channel positions on the board */
     uint8_t currentSlots[APP_CFG_MAX_NUM_CURRENT_CHANNELS];
+    /** Input clk to adc board */
+    uint32_t clkIn;
+    /** Datarate Decimate by 2 bit*/
+    uint8_t decimateBy2;
+    /** ADC stream mode */
+    ADI_ADC_STREAM_MODE adcStreamMode;
+    /** ADC sampling rate configuration for ADC*/
+    uint32_t adcSamplingRate;
+    /** Number of ADCs */
+    uint8_t numAdc;
+    /** ADC types */
+    ADI_ADC_TYPE adcType[APP_CFG_MAX_NUM_ADC];
+    /** ADC inversion bit */
+    uint8_t adcInv[APP_CFG_MAX_NUM_ADC];
+
 } ADC_BOARD_CONFIG;
 
 /**
@@ -98,8 +136,7 @@ typedef struct
     volatile uint32_t prevDreadyTime;
     /** Timestamp for current sample*/
     volatile uint32_t currDreadyTime;
-    /** ADC sampling rate configuration for ADC*/
-    uint32_t adcSamplingRate;
+
     /** Flag indicating if adc is collecting samples or not */
     volatile bool enableRun;
     /** count of dready */
@@ -110,8 +147,7 @@ typedef struct
     ADI_ADC_CONFIG_REGISTERS configRegisters[APP_CFG_MAX_NUM_ADC];
     /** flag to indicate that the block is ready */
     volatile bool blockReady;
-    /** ADC stream mode */
-    ADI_ADC_STREAM_MODE adcStreamMode;
+
     /** suspend state */
     volatile uint8_t suspendState;
     /** Channel index */
@@ -126,21 +162,15 @@ typedef struct
     uint8_t adcRegBuff[2 * APP_CFG_MAX_NUM_ADC];
     /** bandwidth Option for the ADCs -- used to calculate HPF Corner Freq */
     uint32_t bwOption[APP_CFG_MAX_NUM_ADC];
-    /** Input clk to adc board */
-    uint32_t clkIn;
-    /** DataRate Decimate by 2 bit*/
-    uint8_t decimateBy2;
-    /** Board-Related Configs */
-    ADC_BOARD_CONFIG adcBoardConfig;
-    /** ADC_CMI and ADC_INV register value */
-    uint8_t regCmiInvVal[APP_CFG_MAX_NUM_ADC];
+    /** ADC_CMI register value */
+    uint8_t regCmiVal[APP_CFG_MAX_NUM_ADC];
     /** Flag set when DREADY interrupt occurs */
     volatile uint8_t dreadyFlag;
 
-    /** ADC types*/
-    ADI_ADC_TYPE adcType[APP_CFG_MAX_NUM_ADC];
     /** Integer sample delay requested by user. */
     uint8_t integerSampleDelay[APP_CFG_MAX_NUM_CHANNELS];
+    /** Function Pointer to ADC events. */
+    ADI_ADC_CALLBACK_FUNC pfCallback;
 #if (APP_CFG_USE_TIMESTAMP == 1)
     /** Timestamp */
     uint32_t timestamp[TIMESTAMP_BUFFER_SIZE];
@@ -149,7 +179,8 @@ typedef struct
     uint32_t adcStateMemory[ADI_ADC_STATE_MEM_NUM_BYTES_4XADEMA127_4XBLOCKSIZE / 4];
     /** Interface memory */
     uint32_t tempMemory[TEMP_MEM_NUM_BYTES_4XADEMA127 / 4];
-
+    /** Flag set when DSP LOCK occurs */
+    uint8_t dspLockFlag;
 } ADC_INTERFACE_INFO;
 
 /** @} */
@@ -159,15 +190,6 @@ typedef struct
  * appropriate configurations by calling service APIs.
  * @{
  */
-
-/**
- * @brief ADC callback function.
- * @param[in] hUser - user handle.
- * @param[in] adcEvent - ADC event.
- * @return Result of the command
- */
-
-ADI_ADC_STATUS AdcIfAdcCallback(void *hUser, uint32_t adcEvent);
 
 /**
  * @brief Interface to APIs that creates instance for ADC Service.
@@ -186,11 +208,10 @@ ADC_INTERFACE_INFO *AdcIfGetInstance(void);
  * @brief Interface to APIs that perform initialization of service, perform resets and configure the
  * first ADC in daisy chain.
  * @param[in]  pInfo - pointer to interface info structure.
- * @param[in]  numAdc - num adc.
- * @param[in]  pAdcType - adc type.
+ * @param[in]  pAdcBoardConfig - pointer to board config.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc, ADI_ADC_TYPE *pAdcType);
+ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAdcBoardConfig);
 
 /**
  * @brief Interface to APIs that perform ADC configuration.
@@ -232,6 +253,13 @@ ADI_ADC_STATUS AdcIfReadRegister(ADC_INTERFACE_INFO *pInfo, uint16_t address, in
                                  uint8_t *pBuffer, uint32_t *pNumBytes);
 
 /**
+ * @brief Waits for ADC response. This function is to be implemented in application.
+ * @param[in]  pInfo - pointer to interface info structure.
+ * @return Result of the command
+ */
+ADI_ADC_STATUS AdcIfWaitAdcResponse(ADC_INTERFACE_INFO *pInfo);
+
+/**
  * @brief Interface to APIs that start ADC sample capture.
  * @param[in]  pInfo - pointer to interface info structure.
  * @return Result of the command
@@ -244,18 +272,6 @@ ADI_ADC_STATUS AdcIfStartCapture(ADC_INTERFACE_INFO *pInfo);
  * @return Result of the command
  */
 ADI_ADC_STATUS AdcIfStopCapture(ADC_INTERFACE_INFO *pInfo);
-
-/**
- * @brief  Interface to SPI Rx callback.
- */
-void AdcIfSpiRxCallback(void);
-
-/**
- * @brief  Interface to GPIO callback.
- * @param[in]  port - Port.
- * @param[in]  pinFlag - pin flag.
- */
-void AdcIfDreadyCallback(uint32_t port, uint32_t pinFlag);
 
 /**
  * Connect approrpiate ADCs to the board.
@@ -296,24 +312,6 @@ int32_t AdcIfReadVersion(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pSil
 void ReturnAdcErrorFlags(volatile uint8_t *pDreadyErr, volatile uint8_t *pOverflowErr);
 
 /**
- * @brief Interface to APIs that wait for ADC response.
- * @param[in]  pInfo - pointer to interface info structure.
- * @return Result of the command
- */
-ADI_ADC_STATUS AdcIfWaitAdcResponse(ADC_INTERFACE_INFO *pInfo);
-
-/**
- * @brief  Function that collect samples.
- * @param[in]  pInfo - pointer to interface info structure.
- * @param[in]  channelMask - channel mask.
- * @param[in]  numSamplesRequired - number of samples required.
- * @param[out]  pSamples - pointer to buffer.
- * @return Result of the command
- */
-ADI_ADC_STATUS AdcIfCollectSamples(ADC_INTERFACE_INFO *pInfo, uint32_t channelMask,
-                                   uint32_t numSamplesRequired, int32_t *pSamples);
-
-/**
  * @brief Setting the values of ADEMA12X DSP RAM registers present in the structure
  * #ADI_ADC_DSP_CHANNEL_PARAMS.
  * @param[in]  pInfo - pointer to interface info structure.
@@ -334,6 +332,28 @@ ADI_ADC_STATUS AdcIfPopulateDspRegisterStruct(ADC_INTERFACE_INFO *pInfo, uint8_t
  */
 ADI_ADC_STATUS AdcIfGetDspRegisterStruct(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc,
                                          ADI_ADC_TYPE *pAdcType);
+
+/**
+ * @brief Saving a backup of ADEMA12X DSP RAM registers present in the structure
+ * #ADI_ADC_DSP_CHANNEL_PARAMS.
+ * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  numAdc - number of adcs.
+ * @param[in]  pAdcType - type of adcs.
+ * @return Result of the command
+ */
+ADI_ADC_STATUS AdcIfPopulateDspBackupRegisterStruct(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc,
+                                                    ADI_ADC_TYPE *pAdcType);
+
+/**
+ * @brief Reloading the values of ADEMA12X DSP RAM registers present in the structure
+ * #ADI_ADC_DSP_CHANNEL_PARAMS.
+ * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  numAdc - number of adcs.
+ * @param[in]  pAdcType - type of adcs.
+ * @return Result of the command
+ */
+ADI_ADC_STATUS AdcIfGetDspBackupRegisterStruct(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc,
+                                               ADI_ADC_TYPE *pAdcType);
 
 /**
  * @brief Writes to channel integer sample delay configuration of ADC.

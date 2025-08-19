@@ -85,6 +85,6 @@
 		"cmake.configureArgs": [
 			//Pass compile args to cmake here.
 			
-		],
+		]
 	}
 }

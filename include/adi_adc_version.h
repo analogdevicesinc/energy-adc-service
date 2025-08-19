@@ -30,10 +30,10 @@ extern "C" {
 #define ADI_ADC_PATCH_NUMBER 0
 /** ID to differentiate different builds of same release.
  *  Updated through  automation*/
-#define ADI_ADC_BUILD_HASH 0x072229ea0
+#define ADI_ADC_BUILD_HASH 0xb30f157a1
 /** Build Number.
  *  Updated through  automation*/
-#define ADI_ADC_BUILD_NUM 2508061
+#define ADI_ADC_BUILD_NUM 2508190
 
 /** Release version */
 #define ADI_ADC_VERSION                                                                            \

@@ -1,0 +1,49 @@
+{
+	"folders": [
+		{
+			"name": "project",
+			"path": "."
+		},
+		{
+			"name": "board_support",
+			"path": "../board_support/stm"
+		},
+		{
+			"name": "interface/include",
+			"path": "../interface/include"
+		},
+		{
+			"name": "interface/source",
+			"path": "../interface/source"
+		},
+		{
+			"name": "adc/source",
+			"path": "../source"
+		},
+		{
+			"name": "adc/include",
+			"path": "../include"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/test": true,
+			"**/nucleo_h563zi_master": true,
+			"**/crane_sieval": true,
+			"**/nucleo_h563zi_slave": true,
+			"**/Templates": true,
+			"**/_htmresc": true,
+			"**/**.html": true,
+			"**/**.chm": true,
+			"**/stm32h563zi": true,
+			"**/stm32h573zi": true,
+			"**/vscode": true,
+		},
+	"cmake.configureArgs": [
+		//Pass compile args to cmake here
+		// "-DSDK=C:/STM32Cube/Repository/STM32Cube_FW_H5_V1.3.0/Drivers/STM32H5xx_HAL_Driver",
+	],
+	"files.associations": {
+	}
+	}
+}
