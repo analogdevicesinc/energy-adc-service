@@ -30,32 +30,6 @@ extern "C" {
  * @{
  */
 
-/** Temp memory required */
-#define TEMP_MEM_NUM_BYTES_4XADEMA127                                                              \
-    TEMP_MEM_NUM_BYTES(APP_CFG_MAX_NUM_ADC, APP_CFG_MAX_NUM_CHANNELS_PER_ADC)
-
-/**
- * @brief Calculates the temporary memory size required for the interface.
- *
- * This macro computes the total number of bytes needed for temporary
- * storage during ADC service processing.
- *
- * The formula allocates space for per-ADC and per-channel temporary buffers.
- * + 3 is added to ensure proper 4-byte alignment when the result is later cast
- * or divided by `sizeof(uint32_t)`.
- *
- * @param numAdc                Number of ADC instances.
- * @param maxNumChannelPerAdc   Maximum number of channels per ADC.
- *
- * @return Total memory size in bytes (including alignment padding).
- */
-#if APP_CFG_ENABLE_DSP_BACKUP == 1
-#define TEMP_MEM_NUM_BYTES(numAdc, maxNumChannelPerAdc)                                            \
-    (numAdc * maxNumChannelPerAdc * (12 * sizeof(uint32_t))) + 3
-#else
-#define TEMP_MEM_NUM_BYTES(numAdc, maxNumChannelPerAdc)                                            \
-    (numAdc * maxNumChannelPerAdc * (7 * sizeof(uint32_t))) + 3
-#endif
 #ifndef APP_CFG_IGNORE_RX_BUFFER_OVERFLOW
 /** Ignore Rx Buffer Overflow */
 #define APP_CFG_IGNORE_RX_BUFFER_OVERFLOW 1
@@ -65,6 +39,35 @@ extern "C" {
 /** Size of timestamp buffer. */
 #define TIMESTAMP_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_BLOCK_SIZE * APP_CFG_MAX_NUM_ADC)
 #endif
+
+/**
+ * @brief Structure to store ADC DSP registers.
+ */
+typedef struct
+{
+    /** XT aggressor */
+    ADI_ADC_CHAN_XT_AGGRESSOR xtAggressor[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+    /** channel offset */
+    int32_t offset[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+    /** XT gain */
+    float xtGain[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+    /** gain */
+    float gain[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+    /** shift */
+    uint8_t shift[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+
+} ADC_IF_DSP_PARAMS;
+
+/**
+ * @brief Structure to store ADC Datapath registers.
+ */
+typedef struct
+{
+    /** Datapath Config */
+    ADI_ADC_CHAN_DATAPATH_CONFIG dataPathConfig[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+    /** phase offset */
+    float phaseOffset[APP_CFG_MAX_NUM_CHANNELS_PER_ADC];
+} ADC_IF_DATAPATH_PARAMS;
 
 /**
  * ADC Params list
@@ -81,9 +84,15 @@ typedef struct
     ADI_ADC_DSP_DATAPATH_PARAMS adcDatapathParams;
     /** Dsp Channel Register*/
     ADI_ADC_DSP_CHANNEL_PARAMS adcChannelParams;
+    /** Stores ADC DSP registers */
+    ADC_IF_DSP_PARAMS dspParams;
+    /** ADC Datapath params */
+    ADC_IF_DATAPATH_PARAMS datapathParams;
 #if APP_CFG_ENABLE_DSP_BACKUP == 1
     /** Dsp Channel registers backup - used to save and reload DSP */
     ADI_ADC_DSP_CHANNEL_PARAMS adcDspBackup;
+    /** Stores DSP registers backup */
+    ADC_IF_DSP_PARAMS dspBackupParams;
 #endif
 } ADEMA12X_ADC_PARAMS;
 
@@ -177,8 +186,6 @@ typedef struct
 #endif
     /** Library memory */
     uint32_t adcStateMemory[ADI_ADC_STATE_MEM_NUM_BYTES_4XADEMA127_4XBLOCKSIZE / 4];
-    /** Interface memory */
-    uint32_t tempMemory[TEMP_MEM_NUM_BYTES_4XADEMA127 / 4];
     /** Flag set when DSP LOCK occurs */
     uint8_t dspLockFlag;
 } ADC_INTERFACE_INFO;

@@ -56,12 +56,8 @@ static ADI_ADC_STATUS WriteDatapathRegisters(ADC_INTERFACE_INFO *pInfo,
  * @brief Allocate memory for temp memory used by interface
  *
  * @param pInfo Pointer to the ADC_INTERFACE_INFO structure.
- * @param pTempMemory Pointer to the temp memory.
- * @param tempMemorySize Temp memory size.
- * @return Status of the operation.
  */
-static uint8_t AllocateIfTempMemory(ADC_INTERFACE_INFO *pInfo, uint32_t *pTempMemory,
-                                    uint32_t tempMemorySize);
+static void AllocateDspMem(ADC_INTERFACE_INFO *pInfo);
 
 /*============= F U N C T I O N S =============*/
 
@@ -82,11 +78,11 @@ int32_t AdcIfCreateService(ADC_INTERFACE_INFO *pInfo)
         status = 1;
     }
 
-#if APP_CFG_ENABLE_DATAPATH == 1
     if (status == 0)
     {
-        status = AllocateIfTempMemory(pInfo, pInfo->tempMemory, sizeof(pInfo->tempMemory));
+        AllocateDspMem(pInfo);
     }
+#if APP_CFG_ENABLE_DATAPATH == 1
     if (status == 0)
     {
         adcStatus = AdcIfResetDatapathParams(&pInfo->adcRegParams[0]);
@@ -722,66 +718,41 @@ ADI_ADC_STATUS AdcIfGetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pC
     return status;
 }
 
-uint8_t AllocateIfTempMemory(ADC_INTERFACE_INFO *pInfo, uint32_t *pTempMemory,
-                             uint32_t tempMemorySize)
+void AllocateDspMem(ADC_INTERFACE_INFO *pInfo)
 {
-    uint8_t status = ADI_ADC_STATUS_SUCCESS;
-    uint32_t offset = 0;
-
     for (int i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
     {
         pInfo->adcRegParams[i].adcDatapathParams.pDataPathConfig =
-            (ADI_ADC_CHAN_DATAPATH_CONFIG *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+            pInfo->adcRegParams[i].datapathParams.dataPathConfig;
+        pInfo->adcRegParams[i].adcDatapathParams.pPhaseOffset =
+            pInfo->adcRegParams[i].datapathParams.phaseOffset;
 
-        pInfo->adcRegParams[i].adcDatapathParams.pPhaseOffset = (float *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
-    }
-    for (int i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
-    {
         pInfo->adcRegParams[i].adcChannelParams.pXtAggressor =
-            (ADI_ADC_CHAN_XT_AGGRESSOR *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+            pInfo->adcRegParams[i].dspParams.xtAggressor;
 
-        pInfo->adcRegParams[i].adcChannelParams.pOffset = (int32_t *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcChannelParams.pOffset = pInfo->adcRegParams[i].dspParams.offset;
 
-        pInfo->adcRegParams[i].adcChannelParams.pXtGain = (float *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcChannelParams.pXtGain = pInfo->adcRegParams[i].dspParams.xtGain;
 
-        pInfo->adcRegParams[i].adcChannelParams.pGain = (float *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcChannelParams.pGain = pInfo->adcRegParams[i].dspParams.gain;
 
-        pInfo->adcRegParams[i].adcChannelParams.pShift = (uint8_t *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcChannelParams.pShift = pInfo->adcRegParams[i].dspParams.shift;
     }
 #if APP_CFG_ENABLE_DSP_BACKUP == 1
     for (int i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
     {
         pInfo->adcRegParams[i].adcDspBackup.pXtAggressor =
-            (ADI_ADC_CHAN_XT_AGGRESSOR *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+            pInfo->adcRegParams[i].dspBackupParams.xtAggressor;
 
-        pInfo->adcRegParams[i].adcDspBackup.pOffset = (int32_t *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcDspBackup.pOffset = pInfo->adcRegParams[i].dspBackupParams.offset;
 
-        pInfo->adcRegParams[i].adcDspBackup.pXtGain = (float *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcDspBackup.pXtGain = pInfo->adcRegParams[i].dspBackupParams.xtGain;
 
-        pInfo->adcRegParams[i].adcDspBackup.pGain = (float *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcDspBackup.pGain = pInfo->adcRegParams[i].dspBackupParams.gain;
 
-        pInfo->adcRegParams[i].adcDspBackup.pShift = (uint8_t *)&pTempMemory[offset];
-        offset += APP_CFG_MAX_NUM_CHANNELS_PER_ADC;
+        pInfo->adcRegParams[i].adcDspBackup.pShift = pInfo->adcRegParams[i].dspBackupParams.shift;
     }
 #endif
-    if (offset > (tempMemorySize / 4))
-    {
-        /* Insufficient temp memory */
-        status = 1;
-    }
-
-    return status;
 }
 
 /**
