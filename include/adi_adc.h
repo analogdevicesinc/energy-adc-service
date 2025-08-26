@@ -792,7 +792,21 @@ ADI_ADC_STATUS adi_adc_SetSamplingRate(ADI_ADC_HANDLE hAdc, ADI_ADC_CONFIG_REGIS
  */
 ADI_ADC_STATUS adi_adc_GetAdcIdxAndChan(ADI_ADC_HANDLE hAdc, uint8_t slotNum, uint8_t *pAdcIdx,
                                         uint8_t *pChanNum);
-
+/**
+ * @brief Function to get the position of the sample in the ADC frame.
+ *
+ * @param[in] hAdc      - ADC Service handle
+ * @param[in] adcIdx   - ADC index.
+ * @param[out] chanNum  - Channel number of a particular ADC.
+ * @param[out] pSlotNum - Pointer to store the slot number for the ADC.
+ *
+ * @return  #ADI_ADC_STATUS_SUCCESS \n
+ * #ADI_ADC_STATUS_INCORRECT_SLOT_CONFIG \n
+ * #ADI_ADC_STATUS_NULL_PTR \n
+ * #ADI_ADC_STATUS_INVALID_ADC_INDEX \n
+ */
+ADI_ADC_STATUS adi_adc_GetChanPosInFrame(ADI_ADC_HANDLE hAdc, uint8_t adcIdx, uint8_t chanNum,
+                                         int8_t *pSlotNum);
 /**
  * @brief Function to set the ADC frame response frame format.
  *

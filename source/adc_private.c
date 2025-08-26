@@ -87,7 +87,6 @@ static ADI_ADC_STATUS FrameCrcValidate(ADI_ADC_INFO *pInfo, volatile uint8_t *pR
  */
 static void GetDelayedSample(ADI_ADC_INFO *pInfo, ADI_ADC_DELAY_BUFFER *pChBuf, int32_t newSample,
                              int32_t *pOutSample);
-
 /**
  * @brief Store Datapath shift
  *
@@ -853,7 +852,7 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
     uint8_t numSamplesInBlock = pAdcCfg->numSamplesInBlock;
     uint8_t maxNumChannelPerAdc = pInfo->maxNumChannelPerAdc;
 
-    uint8_t globalCh = 0;
+    uint8_t slotNum = 0;
     uint8_t chIdx = 0;
     ADI_ADC_DELAY_BUFFER *pChBuf;
 
@@ -889,8 +888,8 @@ ADI_ADC_STATUS AdcReadBlockWithDelay(ADI_ADC_INFO *pInfo, int32_t *pBuffer,
 
                     for (chIdx = 0; chIdx < samplesPerFrame; chIdx++)
                     {
-                        globalCh = adcIdx * maxNumChannelPerAdc + chIdx;
-                        pChBuf = &pInfo->pChannelDelayBuffers[globalCh];
+                        slotNum = cntPrev + chIdx;
+                        pChBuf = &pInfo->pChannelDelayBuffers[slotNum];
 
                         GetDelayedSample(pInfo, pChBuf, pInfo->pSampleLinearBuf[chIdx],
                                          &pBuffer[cnt + chIdx]);
@@ -933,15 +932,16 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
 {
     int32_t i;
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
-    uint8_t globalCh;
+    uint8_t chanCnt = 0;
+    int8_t slotNum = 0;
     int8_t adcIdx;
     ADI_ADC_DELAY_BUFFER *pChBuf;
-    uint8_t maxNumChannelPerAdc = pInfo->maxNumChannelPerAdc;
 
     for (i = 0; i < numChan; i++)
     {
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
+            chanCnt = 0;
             if (pIntegerDelay[i] > pInfo->adcCfg.maxSampleDelay)
             {
                 adcStatus = ADI_ADC_STATUS_INVALID_SAMPLE_DELAY;
@@ -953,25 +953,31 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
                 {
                     for (adcIdx = 0; adcIdx < pInfo->adcCfg.numAdc; adcIdx++)
                     {
-                        globalCh = adcIdx * maxNumChannelPerAdc + pChanIdx[i];
-                        pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pIntegerDelay[i];
+                        slotNum = chanCnt + pChanIdx[i];
+                        pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pIntegerDelay[i];
 
                         // Update readIdx based on current writeIdx and delay
-                        pChBuf = &pInfo->pChannelDelayBuffers[globalCh];
+                        pChBuf = &pInfo->pChannelDelayBuffers[slotNum];
                         pChBuf->readIdx =
                             (pChBuf->writeIdx + pInfo->delayBuffSize - pIntegerDelay[i]) %
                             pInfo->delayBuffSize;
+
+                        chanCnt += pInfo->pTypeConfig[adcIdx].samplesPerFrame;
                     }
                 }
                 else
                 {
-                    globalCh = adcNum * maxNumChannelPerAdc + pChanIdx[i];
-                    pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pIntegerDelay[i];
+                    adcStatus = GetAdcSlotNum(pInfo, adcNum, pChanIdx[i], &slotNum);
+                    if (adcStatus == ADI_ADC_STATUS_SUCCESS)
+                    {
+                        pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pIntegerDelay[i];
 
-                    // Update readIdx based on current writeIdx and delay
-                    pChBuf = &pInfo->pChannelDelayBuffers[globalCh];
-                    pChBuf->readIdx = (pChBuf->writeIdx + pInfo->delayBuffSize - pIntegerDelay[i]) %
-                                      pInfo->delayBuffSize;
+                        // Update readIdx based on current writeIdx and delay
+                        pChBuf = &pInfo->pChannelDelayBuffers[slotNum];
+                        pChBuf->readIdx =
+                            (pChBuf->writeIdx + pInfo->delayBuffSize - pIntegerDelay[i]) %
+                            pInfo->delayBuffSize;
+                    }
                 }
             }
         }
@@ -1179,30 +1185,62 @@ ADI_ADC_STATUS SetMaxChannels(uint8_t numAdc, ADI_ADC_TYPE *pAdcType, ADI_ADC_IN
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint8_t i;
     pInfo->maxNumChannel = 0;
+    uint32_t maxChan = 0;
 
     for (i = 0; i < numAdc; i++)
     {
         if (pAdcType[i] == ADI_ADC_TYPE_ADEMA127)
         {
             pInfo->maxNumChannel += 7;
-            pInfo->maxNumChannelPerAdc = 7;
+            maxChan = (maxChan < 7) ? 7 : maxChan;
         }
         else if (pAdcType[i] == ADI_ADC_TYPE_ADEMA124)
         {
             pInfo->maxNumChannel += 4;
-            pInfo->maxNumChannelPerAdc = 4;
+            maxChan = (maxChan < 4) ? 4 : maxChan;
         }
         else if (pAdcType[i] == ADI_ADC_TYPE_ADE91XX)
         {
             pInfo->maxNumChannel += 3;
-            pInfo->maxNumChannelPerAdc = 3;
+            maxChan = (maxChan < 3) ? 3 : maxChan;
         }
         else
         {
             status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
         }
     }
+    pInfo->maxNumChannelPerAdc = maxChan;
 
+    return status;
+}
+
+ADI_ADC_STATUS GetAdcSlotNum(ADI_ADC_INFO *pInfo, uint8_t adcNum, uint8_t chanNum, int8_t *pSlotNum)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    *pSlotNum = -1;
+    uint8_t adcIdx = 0;
+    uint8_t frameIdx = 0;
+
+    if (adcNum > pInfo->adcCfg.numAdc)
+    {
+        status = ADI_ADC_STATUS_INVALID_ADC_INDEX;
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        for (adcIdx = 0; adcIdx < pInfo->adcCfg.numAdc; adcIdx++)
+        {
+            if (adcIdx == adcNum)
+            {
+                *pSlotNum = frameIdx + chanNum;
+                if (*pSlotNum >= (uint8_t)pInfo->maxNumChannel)
+                {
+                    status = ADI_ADC_STATUS_INCORRECT_SLOT_CONFIG;
+                }
+                break;
+            }
+            frameIdx += pInfo->pTypeConfig[adcIdx].samplesPerFrame;
+        }
+    }
     return status;
 }
 

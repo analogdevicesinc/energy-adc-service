@@ -661,7 +661,7 @@ ADI_ADC_STATUS AdcIfSetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pV
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int8_t i;
-    uint8_t globalCh;
+    int8_t slotNum = 0;
     int8_t adcNum;
 
     // Update the integer sample delay configuration in the ADC Config instance in ADC Interface
@@ -672,14 +672,14 @@ ADI_ADC_STATUS AdcIfSetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pV
         {
             for (adcNum = 0; adcNum < pInfo->adcCfg.numAdc; adcNum++)
             {
-                globalCh = adcNum * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pValue[i];
+                status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcNum, pChanIdx[i], &slotNum);
+                pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pValue[i];
             }
         }
         else
         {
-            globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-            pInfo->adcCfg.pIntegerSampleDelay[globalCh] = pValue[i];
+            status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcIdx, pChanIdx[i], &slotNum);
+            pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pValue[i];
         }
     }
     // Set the integer sample delay configuration inside the ADC service
@@ -692,7 +692,7 @@ ADI_ADC_STATUS AdcIfGetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pC
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int8_t i;
-    uint8_t globalCh;
+    int8_t slotNum = 0;
     int8_t adcNum;
     status = adi_adc_GetConfig(pInfo->hAdc, &pInfo->adcCfg);
 
@@ -704,14 +704,14 @@ ADI_ADC_STATUS AdcIfGetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pC
             {
                 for (adcNum = 0; adcNum < pInfo->adcCfg.numAdc; adcNum++)
                 {
-                    globalCh = adcNum * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                    pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[globalCh];
+                    status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcNum, pChanIdx[i], &slotNum);
+                    pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[slotNum];
                 }
             }
             else
             {
-                globalCh = adcIdx * APP_CFG_MAX_NUM_CHANNELS_PER_ADC + pChanIdx[i];
-                pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[globalCh];
+                status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcIdx, pChanIdx[i], &slotNum);
+                pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[slotNum];
             }
         }
     }

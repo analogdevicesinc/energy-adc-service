@@ -74,7 +74,7 @@ extern "C" {
     Valid delays: 0 (no delay), 1, 2, 3, 4 */
 #define APP_CFG_MAX_SAMPLE_DELAY 4
 /** Enable use of integer sample delay */
-#define APP_CFG_USE_SAMPLE_DELAY
+#define APP_CFG_USE_SAMPLE_DELAY 1
 /** Size of sample delay buffer. */
 #define APP_CFG_DELAY_BUFFER_SIZE (APP_CFG_MAX_SAMPLE_DELAY + 1)
 /** Enable use store timestamp of samples */

@@ -179,7 +179,7 @@ ADI_ADC_STATUS adi_adc_ReadBlock(ADI_ADC_HANDLE hAdc, int32_t *pBuffer,
     }
     else
     {
-#ifdef APP_CFG_USE_SAMPLE_DELAY
+#if APP_CFG_USE_SAMPLE_DELAY == 1
         status = AdcReadBlockWithDelay(pInfo, pBuffer, pAdcStatusOutput);
 #else
         status = AdcReadBlock(pInfo, pBuffer, pAdcStatusOutput);
@@ -533,7 +533,7 @@ ADI_ADC_STATUS adi_adc_GetAdcIdxAndChan(ADI_ADC_HANDLE hAdc, uint8_t slotNum, ui
                                         uint8_t *pChanNum)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_INCORRECT_SLOT_CONFIG;
-    ADI_ADC_INFO *pInfo = (ADI_ADC_INFO *)hAdc;
+    ADI_ADC_INFO *pInfo;
     uint8_t chanLow = 0;
     uint8_t chanHigh;
     uint8_t numAdc;
@@ -544,6 +544,7 @@ ADI_ADC_STATUS adi_adc_GetAdcIdxAndChan(ADI_ADC_HANDLE hAdc, uint8_t slotNum, ui
     }
     else
     {
+        pInfo = (ADI_ADC_INFO *)hAdc;
         numAdc = pInfo->adcCfg.numAdc;
 
         // Loop over all the ADCs to find the slot number
@@ -559,6 +560,25 @@ ADI_ADC_STATUS adi_adc_GetAdcIdxAndChan(ADI_ADC_HANDLE hAdc, uint8_t slotNum, ui
             }
             chanLow = chanHigh;
         }
+    }
+
+    return adcStatus;
+}
+
+ADI_ADC_STATUS adi_adc_GetChanPosInFrame(ADI_ADC_HANDLE hAdc, uint8_t adcIdx, uint8_t chanNum,
+                                         int8_t *pSlotNum)
+{
+    ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_INCORRECT_SLOT_CONFIG;
+    ADI_ADC_INFO *pInfo;
+
+    if ((hAdc == NULL) || (pSlotNum == NULL))
+    {
+        adcStatus = ADI_ADC_STATUS_NULL_PTR;
+    }
+    else
+    {
+        pInfo = (ADI_ADC_INFO *)hAdc;
+        adcStatus = GetAdcSlotNum(pInfo, adcIdx, chanNum, pSlotNum);
     }
 
     return adcStatus;

@@ -639,6 +639,18 @@ ADI_ADC_STATUS AllocateMemory(ADI_ADC_INFO *pInfo, uint32_t *pStateMemory, uint3
  */
 ADI_ADC_STATUS SetMaxChannels(uint8_t numAdc, ADI_ADC_TYPE *pAdcType, ADI_ADC_INFO *pInfo);
 
+/**
+ * @brief Get delayed sample from delay buffer
+ * @param[in]  pInfo	- Pointer to the ADC info structure.
+ * @param[in]  adcNum	- ADC number.
+ * @param[in]  chanNum	- Channel number.
+ * @param[out] pSlotNum	- Pointer to store the slot number.
+ * @return ADI_ADC_STATUS_SUCCESS if all channels are valid, otherwise appropriate error code.
+ *
+ */
+ADI_ADC_STATUS GetAdcSlotNum(ADI_ADC_INFO *pInfo, uint8_t adcNum, uint8_t chanNum,
+                             int8_t *pSlotNum);
+
 #ifdef __cplusplus
 }
 #endif
