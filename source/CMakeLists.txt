@@ -28,11 +28,11 @@ set(SRC # ADC Service sources
 )
 
 set(INCLUDE # ADC application includes
-			${ADC_SERVICE_DIR}/include
-			${ADE_REG_DIR}/adema12x/include
-			${ADE_REG_DIR}/include
-			${ADE_REG_DIR}/ade91xx/include
-)
+    ${ADC_SERVICE_DIR}/include
+    ${ADE_REG_DIR}/adema12x/include
+    ${ADE_REG_DIR}/include
+    ${ADE_REG_DIR}/ade91xx/include
+  )
 
 set_source_files_properties(
   ${PROJECT_ROOT_DIR}/source/adi_adc.c
@@ -40,6 +40,11 @@ set_source_files_properties(
   ${PROJECT_ROOT_DIR}/source/adc_private.c
   PROPERTIES
 )
+if(TOOLCHAIN MATCHES "iccarm")
+  add_compile_options(--diag_warning=Pe188)
+else()
+  add_compile_options(-Wcast-align)
+endif()
 
 # Set the project name
 project(adc_service C)

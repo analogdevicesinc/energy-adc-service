@@ -49,7 +49,7 @@ ADI_ADC_STATUS AdcSyncAlign(ADI_ADC_INFO *pInfo)
         pInfo->syncData.waitCount = 0;
         break;
     case ADI_ADC_SYNC_WAIT:
-        AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+        AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
         pInfo->syncData.waitCount++;
         // wait at least 3 cycles of DREADY
         if (pInfo->syncData.waitCount > ADI_ADC_SYNC_NUM_DREADY_WAIT)
@@ -78,7 +78,7 @@ static ADI_ADC_STATUS PopulateAlignBit(ADI_ADC_INFO *pInfo)
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->pTypeConfig[0];
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
@@ -90,7 +90,7 @@ static ADI_ADC_STATUS PopulateAlignBit(ADI_ADC_INFO *pInfo)
         {
             addr = pTypeConfig[idx].configReg.syncSnap.addr;
             value = pTypeConfig[idx].configReg.syncSnap.value;
-            pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+            pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
             status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                              pCmd, pAdcCfg->frameFormat);
         }
@@ -108,7 +108,7 @@ static ADI_ADC_STATUS PopulateSnapshotCountHi(ADI_ADC_INFO *pInfo)
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->pTypeConfig[0];
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
@@ -120,7 +120,7 @@ static ADI_ADC_STATUS PopulateSnapshotCountHi(ADI_ADC_INFO *pInfo)
         {
             addr = pTypeConfig[idx].configReg.snapshotCountHi.addr;
             value = pTypeConfig[idx].configReg.snapshotCountHi.value;
-            pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+            pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
             status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_READ, addr, value,
                                              pCmd, pAdcCfg->frameFormat);
         }

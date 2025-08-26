@@ -19,9 +19,45 @@
 #include <stdint.h>
 #include <string.h>
 
+/**
+ * @brief Flag to check if ADC sample capture is enabled.
+ */
+static bool isSampleCaptureEnabled = false;
+
 /*============= F U N C T I O N S =============*/
 
-ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
+ADI_ADC_STATUS AdcIfResetDatapathParams(ADEMA12X_ADC_PARAMS *pAdcRegParams)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    int32_t i = 0;
+    ADI_ADC_DSP_DATAPATH_PARAMS *pDatapathParams;
+    ADI_ADC_DSP_CHANNEL_PARAMS *pChannelParams;
+
+    for (i = 0; i < APP_CFG_MAX_NUM_ADC; i++)
+    {
+        pDatapathParams = &pAdcRegParams[i].adcDatapathParams;
+        pChannelParams = &pAdcRegParams[i].adcChannelParams;
+
+        memset(&pDatapathParams->alpha, 0, sizeof(pDatapathParams->alpha));
+        memset(&pDatapathParams->datarate, 0, sizeof(pDatapathParams->datarate));
+        memset(&pDatapathParams->pDataPathConfig[0], 0,
+               sizeof(ADI_ADC_CHAN_DATAPATH_CONFIG) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+        memset(&pDatapathParams->pPhaseOffset[0], 0,
+               sizeof(float) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+
+        memset(pChannelParams->pOffset, 0, sizeof(int32_t) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+        memset(pChannelParams->pXtGain, 0, sizeof(float) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+        memset(pChannelParams->pGain, 0, sizeof(float) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+        memset(pChannelParams->pXtAggressor, 0,
+               sizeof(ADI_ADC_CHAN_XT_AGGRESSOR) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+        memset(pChannelParams->pShift, 0, sizeof(uint8_t) * APP_CFG_MAX_NUM_CHANNELS_PER_ADC);
+    }
+
+    return status;
+}
+
+ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAdcBoardConfig,
+                                   uint8_t numAdc)
 {
 
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
@@ -29,69 +65,81 @@ ADI_ADC_STATUS AdcIfDatapathSetVal(ADC_INTERFACE_INFO *pInfo, uint8_t numAdc)
     uint8_t channelNum;
     uint8_t adcIdx;
     uint8_t adcDatapathConfig;
+    uint8_t datarate = 0;
 
     ADI_ADC_DSP_DATAPATH_PARAMS *pDatapathParams;
     ADI_ADC_DSP_CHANNEL_PARAMS *pChannelParams;
 
-    for (i = 0; i < numAdc; i++)
+    status = adi_adcutil_PopulateSamplingRate(
+        pAdcBoardConfig->clkIn, pAdcBoardConfig->adcSamplingRate, pAdcBoardConfig->decimateBy2,
+        numAdc, &pInfo->adcCfg.pAdcType[0], &pInfo->configRegisters[0]);
+
+    if (status == ADI_ADC_STATUS_SUCCESS)
     {
-        pDatapathParams = &pInfo->adcRegParams[i].adcDatapathParams;
-        pChannelParams = &pInfo->adcRegParams[i].adcChannelParams;
-        pInfo->regCmiInvVal[i] = 0;
 
-        memset(pDatapathParams, 0, sizeof(ADI_ADC_DSP_DATAPATH_PARAMS));
-        memset(pChannelParams, 0, sizeof(ADI_ADC_DSP_CHANNEL_PARAMS));
+        for (i = 0; i < numAdc; i++)
+        {
+            pDatapathParams = &pInfo->adcRegParams[i].adcDatapathParams;
+            pInfo->regCmiVal[i] = 0;
 
-        pDatapathParams->datarate.decimationRate = APP_CFG_ADC_DECIMATION_RATE;
-        pDatapathParams->datarate.clkPreScalar = APP_CFG_ADC_PRESCALER;
-        pDatapathParams->datarate.decimationX2 = APP_CFG_ADC_DECIMATION_BY2;
+            datarate = pInfo->configRegisters[i].datarate;
+            pDatapathParams->datarate.decimationRate =
+                (datarate & BITM_ADEMA127_MMR_DATARATE_DECIMATION_RATE) >>
+                BITP_ADEMA127_MMR_DATARATE_DECIMATION_RATE;
 
-        pInfo->adcRegParams[i].gain = APP_CFG_ADC_GAIN;
+            pDatapathParams->datarate.clkPreScalar =
+                (datarate & BITM_ADEMA127_MMR_DATARATE_ADC_CLK_PRESCALER) >>
+                BITP_ADEMA127_MMR_DATARATE_ADC_CLK_PRESCALER;
+
+            pDatapathParams->datarate.decimationX2 =
+                (datarate & BITM_ADEMA127_MMR_DATARATE_DSP_DECIMATION_X2) >>
+                BITP_ADEMA127_MMR_DATARATE_DSP_DECIMATION_X2;
+
+            pInfo->adcRegParams[i].gain = APP_CFG_ADC_GAIN;
+        }
     }
 
     for (i = 0; i < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; i++)
     {
-        adi_adc_GetAdcIdxAndChan(pInfo->hAdc, pInfo->adcBoardConfig.voltageSlots[i], &adcIdx,
+        adi_adc_GetAdcIdxAndChan(pInfo->hAdc, pAdcBoardConfig->voltageSlots[i], &adcIdx,
                                  &channelNum);
         pDatapathParams = &pInfo->adcRegParams[adcIdx].adcDatapathParams;
         pChannelParams = &pInfo->adcRegParams[adcIdx].adcChannelParams;
 
         adcDatapathConfig = APP_CFG_ADC_DATAPATH_CONFIG_VOLTAGE;
-        memcpy(&pDatapathParams->dataPathConfig[channelNum], &adcDatapathConfig,
+        memcpy(&pDatapathParams->pDataPathConfig[channelNum], &adcDatapathConfig,
                sizeof(ADI_ADC_CHAN_DATAPATH_CONFIG));
 
-        pDatapathParams->phaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_VOLTAGE;
-        pChannelParams->gain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_VOLTAGE;
-        pChannelParams->offset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_VOLTAGE;
-        pChannelParams->shift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_VOLTAGE;
+        pDatapathParams->pPhaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_VOLTAGE;
+
+        pChannelParams->pGain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_VOLTAGE;
+        pChannelParams->pOffset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_VOLTAGE;
+        pChannelParams->pShift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_VOLTAGE;
     }
 
     for (i = 0; i < APP_CFG_MAX_NUM_CURRENT_CHANNELS; i++)
     {
-        adi_adc_GetAdcIdxAndChan(pInfo->hAdc, pInfo->adcBoardConfig.currentSlots[i], &adcIdx,
+        adi_adc_GetAdcIdxAndChan(pInfo->hAdc, pAdcBoardConfig->currentSlots[i], &adcIdx,
                                  &channelNum);
         pDatapathParams = &pInfo->adcRegParams[adcIdx].adcDatapathParams;
         pChannelParams = &pInfo->adcRegParams[adcIdx].adcChannelParams;
-        pInfo->regCmiInvVal[adcIdx] |= (1 << channelNum);
+        pInfo->regCmiVal[adcIdx] |= (1 << channelNum);
 
         adcDatapathConfig = APP_CFG_ADC_DATAPATH_CONFIG_CURRENT;
-        memcpy(&pDatapathParams->dataPathConfig[channelNum], &adcDatapathConfig,
+        memcpy(&pDatapathParams->pDataPathConfig[channelNum], &adcDatapathConfig,
                sizeof(ADI_ADC_CHAN_DATAPATH_CONFIG));
 
-        pDatapathParams->phaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_CURRENT;
-        pChannelParams->gain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_CURRENT;
-        pChannelParams->offset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_CURRENT;
-        pChannelParams->shift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_CURRENT;
+        pDatapathParams->pPhaseOffset[channelNum] = APP_CFG_ADC_DATAPATH_PHASE_CURRENT;
+
+        pChannelParams->pGain[channelNum] = APP_CFG_ADC_DATAPATH_GAIN_CURRENT;
+        pChannelParams->pOffset[channelNum] = APP_CFG_ADC_DATAPATH_OFFSET_CURRENT;
+        pChannelParams->pShift[channelNum] = APP_CFG_ADC_DATAPATH_SHIFT_CURRENT;
     }
 
     for (i = 0; i < numAdc; i++)
     {
-        pInfo->adcRegParams[i].cmiReg = pInfo->regCmiInvVal[i];
-#ifdef APP_CFG_ADC_INVERT_CURRENT_CHANNELS
-        pInfo->adcRegParams[i].invReg = APP_CFG_ADC_INVERT_CURRENT_CHANNELS;
-#else
-        pInfo->adcRegParams[i].invReg = pInfo->regCmiInvVal[i];
-#endif
+        pInfo->adcRegParams[i].cmiReg = pInfo->regCmiVal[i];
+        pInfo->adcRegParams[i].invReg = pAdcBoardConfig->adcInv[i];
     }
 
     return status;
@@ -106,6 +154,7 @@ ADI_ADC_STATUS AdcIfAccessDspMem(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8_
 
     if (value == 1)
     {
+        isSampleCaptureEnabled = pInfo->enableRun;
         AdcIfStopCapture(pInfo);
 
         // Request DSP memory access - Set UDSP_MEM_ACCESS_REQ = 1
@@ -138,6 +187,13 @@ ADI_ADC_STATUS AdcIfAccessDspMem(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8_
     {
         // Release DSP memory access - Set UDSP_MEM_ACCESS_REQ = 0
         status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_ACCESS_EXTENDED_MMAP, 0, adcIdx);
+        if (status == ADI_ADC_STATUS_SUCCESS)
+        {
+            if (isSampleCaptureEnabled)
+            {
+                AdcIfStartCapture(pInfo);
+            }
+        }
     }
 
     return status;
@@ -149,8 +205,12 @@ ADI_ADC_STATUS AdcIfConfigDspLock(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8
 
     if (value == 0)
     {
+#if APP_CFG_ENABLE_DSP_BACKUP == 1
         // Save DSP RAM region before datapath config is unlocked
-        status = AdcIfGetDspRegisterStruct(pInfo, pInfo->adcCfg.numAdc, pInfo->adcCfg.adcType);
+        status =
+            AdcIfGetDspBackupRegisterStruct(pInfo, pInfo->adcCfg.numAdc, pInfo->adcCfg.pAdcType);
+#endif
+        isSampleCaptureEnabled = pInfo->enableRun;
         AdcIfStopCapture(pInfo);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
@@ -165,24 +225,38 @@ ADI_ADC_STATUS AdcIfConfigDspLock(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
             status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_DATAPATH_CONFIG_LOCK, 1, adcIdx);
+            // dspLockFlag : This flag should be cleared from example.
+            // Use case: If APP_CFG_ENABLE_DSP_BACKUP == 0, then this flag can be used to check if
+            // DSP RAM has been reset (due to DSP LOCK being set to 1).
+            pInfo->dspLockFlag = 1;
             pInfo->dreadyFlag = 0;
             EvbDelayMs(1);
-            if (status == ADI_ADC_STATUS_SUCCESS)
-            {
-                // Reload DSP RAM region after datapath config is locked
-                status = AdcIfPopulateDspRegisterStruct(pInfo, pInfo->adcCfg.numAdc,
-                                                        pInfo->adcCfg.adcType);
-            }
             // Wait for DREADY signal to resume
             while (pInfo->dreadyFlag == 0)
             {
                 ;
             }
+#if APP_CFG_ENABLE_DSP_BACKUP == 1
+            if (status == ADI_ADC_STATUS_SUCCESS)
+            {
+                // Reload DSP RAM region after datapath config is locked
+                status = AdcIfPopulateDspBackupRegisterStruct(pInfo, pInfo->adcCfg.numAdc,
+                                                              pInfo->adcCfg.pAdcType);
+            }
+#endif
+
             if (status == ADI_ADC_STATUS_SUCCESS)
             {
                 /* adcs become out of sync after writing to dsp lock registers as the dready stops
                    intermittently */
                 status = adi_adc_Align(pInfo->hAdc);
+                if (status == 0)
+                {
+                    if (isSampleCaptureEnabled)
+                    {
+                        AdcIfStartCapture(pInfo);
+                    }
+                }
             }
         }
     }
@@ -213,8 +287,14 @@ ADI_ADC_STATUS AdcIfGetDatapathConfig(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanI
                                       int8_t adcIdx, ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathCfg)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    isSampleCaptureEnabled = pInfo->enableRun;
+
     AdcIfStopCapture(pInfo);
     status = adi_adc_GetDatapathConfig(pInfo->hAdc, pChanIdx, numChan, adcIdx, pDatapathCfg);
+    if (isSampleCaptureEnabled)
+    {
+        AdcIfStartCapture(pInfo);
+    }
     return status;
 }
 
@@ -222,9 +302,15 @@ ADI_ADC_STATUS AdcIfGetDatarate(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_
                                 uint8_t *pClkPreScaler, uint8_t *pSetDecimation)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    isSampleCaptureEnabled = pInfo->enableRun;
+
     AdcIfStopCapture(pInfo);
     status =
         adi_adc_GetDataRate(pInfo->hAdc, adcIdx, pDecimationRate, pClkPreScaler, pSetDecimation);
+    if (isSampleCaptureEnabled)
+    {
+        AdcIfStartCapture(pInfo);
+    }
     return status;
 }
 
@@ -584,7 +670,7 @@ ADI_ADC_STATUS AdcIfGetHpfCutoff(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint3
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
 
-    if (pInfo->adcCfg.adcType[adcIdx] != ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] != ADI_ADC_TYPE_ADE91XX)
     {
         *pBwOption = pInfo->bwOption[adcIdx];
     }
@@ -618,11 +704,11 @@ ADI_ADC_STATUS AdcIfGetDspConfig(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanIdx, i
     if (adcStatus == ADI_ADC_STATUS_SUCCESS)
     {
         adcStatus = AdcIfGetDatapathConfig(pInfo, pChanIdx, numChan, adcIdx,
-                                           &pDatapathParams->dataPathConfig[0]);
+                                           &pDatapathParams->pDataPathConfig[0]);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
             adcStatus = AdcIfGetPhaseOffset(pInfo, pChanIdx, numChan, adcIdx,
-                                            &pDatapathParams->phaseOffset[0]);
+                                            &pDatapathParams->pPhaseOffset[0]);
         }
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
@@ -724,9 +810,14 @@ ADI_ADC_STATUS AdcIfSetDspRam(ADC_INTERFACE_INFO *pInfo, ADI_ADC_DSP_CHANNEL_PAR
 ADI_ADC_STATUS AdcIfGetDatapathAlpha(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pAlphaVal)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    isSampleCaptureEnabled = pInfo->enableRun;
+
     AdcIfStopCapture(pInfo);
     status = adi_adc_GetDatapathAlpha(pInfo->hAdc, adcIdx, pAlphaVal);
-
+    if (isSampleCaptureEnabled)
+    {
+        AdcIfStartCapture(pInfo);
+    }
     return status;
 }
 
@@ -734,10 +825,14 @@ ADI_ADC_STATUS AdcIfGetPhaseOffset(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanIdx,
                                    int8_t adcIdx, float *pPhOffsetVal)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    isSampleCaptureEnabled = pInfo->enableRun;
 
     AdcIfStopCapture(pInfo);
     status = adi_adc_GetChannelPhaseOffset(pInfo->hAdc, pChanIdx, numChan, adcIdx, pPhOffsetVal);
-
+    if (isSampleCaptureEnabled)
+    {
+        AdcIfStartCapture(pInfo);
+    }
     return status;
 }
 
@@ -745,7 +840,7 @@ ADI_ADC_STATUS AdcIfSetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
 
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
     }
@@ -763,7 +858,7 @@ ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint32_t numBytesRead = 0;
     uint8_t cmiReg[2];
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
     }
@@ -783,7 +878,7 @@ ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
     uint32_t numBytesRead = 0;
     uint8_t invRegVal[2];
 
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status = AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcIdx, invRegVal,
                                    &numBytesRead);
@@ -800,7 +895,7 @@ ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
             status = AdcIfWriteRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, invRegVal[1], adcIdx);
         }
     }
-    else if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADEMA127)
+    else if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADEMA127)
     {
         // For ADEMA127, write the ADC Invert register value
         status =
@@ -822,7 +917,7 @@ ADI_ADC_STATUS AdcIfGetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
     uint32_t numBytesRead = 0;
     uint8_t invReg[2];
 
-    if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
     {
         status =
             AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcIdx, invReg, &numBytesRead);

@@ -51,6 +51,7 @@
 			"**/keil": true,
 			"**nucleo**": true,
 			"app_mcu_h7*": true,
+			"**rtos**": true
 		},
 	}
 }

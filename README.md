@@ -4,7 +4,8 @@
 
 # Energy ADC Service
 
-Energy ADC Service provides a set of APIs to communicate with ADI metrology ADCs and collect waveform samples.
+Energy ADC Service offers a set of APIs for interfacing with ADI metrology ADCs, enabling collection of waveform samples over SPI. It handles command assembly, response parsing, and manages sample storage using a circular buffer. The service verifies response CRCs and flags any errors detected. Additionally, it provides helper APIs for configuring datapath features such as gain, offset etc.
+
 This release supports ADE9113, ADE9112, ADE9103, ADEMA124, and ADEMA127. These ADCs use a command and response protocol over the SPI interface. Refer to the datasheets of the respective ADCs and the [energy-ade-registers](https://github.com/analogdevicesinc/energy-ade-registers) repository for details on the command and response protocols.
 
 This repository contains source code for the service and example code demonstrating how to use the APIs. The examples use the following submodules for demonstrations:
@@ -29,7 +30,6 @@ The [sample_read_example](examples) demonstrates how to call various APIs and in
 - Synchronize multiple ADCs in a daisy chain
 - Configure DSP registers
 - Add sample delays to individual channels
-- Example code for tamper detection mode
 
 ## Directory Structure
 

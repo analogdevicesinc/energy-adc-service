@@ -9,6 +9,7 @@
  */
 
 /*============= I N C L U D E S =============*/
+#include "adc_example.h"
 #include "adc_service_interface.h"
 #include "adi_evb.h"
 #include "math.h"
@@ -28,14 +29,14 @@ static void UpdateDreadyErrorFlag(ADC_INTERFACE_INFO *pInfo);
  */
 static void UpdateOverflowErrorFlag(ADC_INTERFACE_INFO *pInfo, ADI_ADC_STATUS status);
 
-void AdcIfSpiRxCallback(void)
+void AdcSpiRxCallback(void)
 {
     ADC_INTERFACE_INFO *pAdcIf = AdcIfGetInstance();
     pAdcIf->isSpiRunning = 0;
     adi_adc_ValidateSamples(pAdcIf->hAdc);
 }
 
-void AdcIfDreadyCallback(uint32_t port, uint32_t pinFlag)
+void AdcDreadyCallback(uint32_t port, uint32_t pinFlag)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     ADC_INTERFACE_INFO *pAdcIf = AdcIfGetInstance();
@@ -59,7 +60,7 @@ void AdcIfDreadyCallback(uint32_t port, uint32_t pinFlag)
     }
 }
 
-ADI_ADC_STATUS AdcIfAdcCallback(void *hUser, uint32_t adcEvent)
+ADI_ADC_STATUS AdcExmAdcCallback(void *hUser, uint32_t adcEvent)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     ADC_INTERFACE_INFO *pAdcIf = AdcIfGetInstance();
@@ -105,8 +106,9 @@ void UpdateDreadyErrorFlag(ADC_INTERFACE_INFO *pInfo)
     /* dreadyTimes are timer counter values and need to be divided by timer frequency to
      * convert to seconds. The timer frequency is 25MHz.
      */
+    ADC_BOARD_CONFIG *pAdcBoardConfig = AdcExmGetBoardConfig();
     float timeFor1Sample = (float)(pInfo->currDreadyTime - pInfo->prevDreadyTime) / 25000000;
-    float timeFor1sSamples = (float)pInfo->adcSamplingRate * timeFor1Sample;
+    float timeFor1sSamples = (float)pAdcBoardConfig->adcSamplingRate * timeFor1Sample;
     float error = (float)fabsf(timeFor1sSamples - 1.0f);
 
     if ((error > (float)0.25) && pInfo->dreadyCnt > 1)
@@ -116,8 +118,8 @@ void UpdateDreadyErrorFlag(ADC_INTERFACE_INFO *pInfo)
     }
 }
 
-ADI_ADC_STATUS AdcIfCollectSamples(ADC_INTERFACE_INFO *pInfo, uint32_t channelMask,
-                                   uint32_t numSamplesRequired, int32_t *pSamples)
+ADI_ADC_STATUS AdcExmCollectSamples(ADC_INTERFACE_INFO *pInfo, uint32_t channelMask,
+                                    uint32_t numSamplesRequired, int32_t *pSamples)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint8_t numSamplesInBlock = pInfo->adcCfg.numSamplesInBlock;

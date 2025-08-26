@@ -127,8 +127,8 @@ ADI_ADC_STATUS AdcConfigure(ADI_ADC_INFO *pInfo, ADI_ADC_CONFIG_REGISTERS *pConf
     {
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            status = pInfo->typeConfig[idx].pfPopulateUserCfgReg(&pInfo->typeConfig[idx].configReg,
-                                                                 &pConfigReg[idx]);
+            status = pInfo->pTypeConfig[idx].pfPopulateUserCfgReg(
+                &pInfo->pTypeConfig[idx].configReg, &pConfigReg[idx]);
         }
     }
 
@@ -173,7 +173,7 @@ ADI_ADC_STATUS AdcConfigure(ADI_ADC_INFO *pInfo, ADI_ADC_CONFIG_REGISTERS *pConf
     {
         status = SetTdmThreshold(pInfo);
     }
-    AdcAssembleNopAllAdc(pInfo, &pInfo->txFramePtr[0]);
+    AdcAssembleNopAllAdc(pInfo, &pInfo->pTxFramePtr[0]);
 
     memcpy(&pInfo->configReg, &pConfigReg, sizeof(ADI_ADC_CONFIG_REGISTERS));
 
@@ -264,7 +264,7 @@ ADI_ADC_STATUS AlignAdc(ADI_ADC_INFO *pInfo)
         status = TransferAdcData(pInfo);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+            AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
             status = TransferAdcData(pInfo);
         }
     }
@@ -284,7 +284,7 @@ ADI_ADC_STATUS UpdateTdmConfig(ADI_ADC_INFO *pInfo)
         status = TransferAdcData(pInfo);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+            AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
             status = TransferAdcData(pInfo);
         }
     }
@@ -304,7 +304,7 @@ ADI_ADC_STATUS SetTdmThreshold(ADI_ADC_INFO *pInfo)
         status = TransferAdcData(pInfo);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+            AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
             status = TransferAdcData(pInfo);
         }
     }
@@ -326,7 +326,7 @@ static ADI_ADC_STATUS ReadRegisterStatus(ADI_ADC_INFO *pInfo)
         status = TransferAdcData(pInfo);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+            AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
             status = TransferAdcData(pInfo);
         }
         if (status == ADI_ADC_STATUS_SUCCESS)
@@ -345,8 +345,8 @@ static ADI_ADC_STATUS CheckRegisterStatus(ADI_ADC_INFO *pInfo)
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
     volatile ADI_ADC_RX_BUFFER *pRxBuffer = &pInfo->rxBuffer;
     uint8_t numAdc = pAdcCfg->numAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = (ADC_TYPE_CONFIG *)&pInfo->typeConfig[0];
-    volatile uint8_t *pRxFrames = &pRxBuffer->adcRxFrames[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
+    volatile uint8_t *pRxFrames = &pRxBuffer->pAdcRxFrames[0];
     uint8_t status0;
     uint8_t status1;
 
@@ -512,7 +512,7 @@ static ADI_ADC_STATUS PopulateAdcClockOutConfig(ADI_ADC_INFO *pInfo, uint8_t adc
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
     uint8_t numAdc = pAdcCfg->numAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     uint8_t addr;
     uint8_t value;
     ADI_ADC_CMD *pCmd;
@@ -521,7 +521,7 @@ static ADI_ADC_STATUS PopulateAdcClockOutConfig(ADI_ADC_INFO *pInfo, uint8_t adc
     {
         addr = pTypeConfig[idx].configReg.status2.addr;
         value = pTypeConfig[idx].configReg.status2.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_READ, addr, value, pCmd,
                                          pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -533,7 +533,7 @@ static ADI_ADC_STATUS PopulateAdcClockOutConfig(ADI_ADC_INFO *pInfo, uint8_t adc
     {
         addr = pTypeConfig[adcIdx].configReg.config0ClkOut.addr;
         value = pTypeConfig[adcIdx].configReg.config0ClkOut.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[adcIdx] + pTypeConfig[adcIdx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[adcIdx] + pTypeConfig[adcIdx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
     }
@@ -548,7 +548,7 @@ static ADI_ADC_STATUS PopulateRegisterConfig(ADI_ADC_INFO *pInfo)
 
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
     uint8_t numAdc = pAdcCfg->numAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     uint8_t addr;
     uint8_t value;
     ADI_ADC_CMD *pCmd;
@@ -559,7 +559,7 @@ static ADI_ADC_STATUS PopulateRegisterConfig(ADI_ADC_INFO *pInfo)
         {
             addr = pTypeConfig[idx].configReg.config0ClkOutStreamDbg.addr;
             value = pTypeConfig[idx].configReg.config0ClkOutStreamDbg.value;
-            pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+            pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
             status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                              pCmd, pAdcCfg->frameFormat);
             if (status != ADI_ADC_STATUS_SUCCESS)
@@ -571,7 +571,7 @@ static ADI_ADC_STATUS PopulateRegisterConfig(ADI_ADC_INFO *pInfo)
         {
             addr = pTypeConfig[0].configReg.config0Dready.addr;
             value = pTypeConfig[0].configReg.config0Dready.value;
-            pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[0] + pTypeConfig[0].cmdOffset);
+            pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[0] + pTypeConfig[0].cmdOffset);
             status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                              pCmd, pAdcCfg->frameFormat);
         }
@@ -581,7 +581,7 @@ static ADI_ADC_STATUS PopulateRegisterConfig(ADI_ADC_INFO *pInfo)
         idx = numAdc - 1;
         addr = pTypeConfig[idx].configReg.config0Dready.addr;
         value = pTypeConfig[idx].configReg.config0Dready.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
     }
@@ -595,7 +595,7 @@ static ADI_ADC_STATUS PopulateRegisterMask2(ADI_ADC_INFO *pInfo)
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
     uint8_t numAdc = pAdcCfg->numAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     uint8_t addr;
     uint8_t value;
     ADI_ADC_CMD *pCmd;
@@ -604,7 +604,7 @@ static ADI_ADC_STATUS PopulateRegisterMask2(ADI_ADC_INFO *pInfo)
     {
         addr = pTypeConfig[idx].configReg.mask2.addr;
         value = pTypeConfig[idx].configReg.mask2.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -621,7 +621,7 @@ static ADI_ADC_STATUS PopulateAlignAdc(ADI_ADC_INFO *pInfo)
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
@@ -631,7 +631,7 @@ static ADI_ADC_STATUS PopulateAlignAdc(ADI_ADC_INFO *pInfo)
     {
         addr = pTypeConfig[idx].configReg.syncSnap.addr;
         value = pTypeConfig[idx].configReg.syncSnap.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -648,7 +648,7 @@ static ADI_ADC_STATUS PopulateTdmConfig(ADI_ADC_INFO *pInfo)
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
@@ -658,7 +658,7 @@ static ADI_ADC_STATUS PopulateTdmConfig(ADI_ADC_INFO *pInfo)
     {
         addr = pTypeConfig[idx].configReg.tdmConfig.addr;
         value = pTypeConfig[idx].configReg.tdmConfig.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -674,7 +674,7 @@ static ADI_ADC_STATUS PopulateTdmThreshold(ADI_ADC_INFO *pInfo)
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int32_t idx;
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
@@ -684,7 +684,7 @@ static ADI_ADC_STATUS PopulateTdmThreshold(ADI_ADC_INFO *pInfo)
     {
         addr = pTypeConfig[idx].configReg.tdmThrshMsb.addr;
         value = pTypeConfig[idx].configReg.tdmThrshMsb.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -703,14 +703,14 @@ static ADI_ADC_STATUS PopulateRegisterStatus(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.status2.addr;
         value = pTypeConfig[idx].configReg.status2.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_READ, addr, value, pCmd,
                                          pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -729,14 +729,14 @@ static ADI_ADC_STATUS PopulateClearStatus0Crc(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.status0Crc.addr;
         value = pTypeConfig[idx].configReg.status0Crc.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -756,14 +756,14 @@ static ADI_ADC_STATUS PopulateConfigCrcMmrRetainedForce(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.configCrcMmrRetainedForce.addr;
         value = pTypeConfig[idx].configReg.configCrcMmrRetainedForce.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -783,14 +783,14 @@ static ADI_ADC_STATUS PopulateConfigCrcMmrRetainedDone(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.configCrcMmrRetainedDone.addr;
         value = pTypeConfig[idx].configReg.configCrcMmrRetainedDone.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -809,13 +809,13 @@ static ADI_ADC_STATUS PopulateDatapathConfigLock(ADI_ADC_INFO *pInfo, uint8_t va
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.datapathConfigLock.addr;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -835,14 +835,14 @@ static ADI_ADC_STATUS PopulateConfigFilt(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.datarate.addr;
         value = pTypeConfig[idx].configReg.datarate.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -862,14 +862,14 @@ static ADI_ADC_STATUS PopulateConfigCrcMmrForce(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.configCrcMmrForce.addr;
         value = pTypeConfig[idx].configReg.configCrcMmrForce.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -889,14 +889,14 @@ static ADI_ADC_STATUS PopulateConfigCrcMmrDone(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.configCrcMmrDone.addr;
         value = pTypeConfig[idx].configReg.configCrcMmrDone.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -916,14 +916,14 @@ static ADI_ADC_STATUS PopulateClearStatus1(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.status1.addr;
         value = pTypeConfig[idx].configReg.status1.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)
@@ -942,14 +942,14 @@ static ADI_ADC_STATUS PopulateClearStatus0(ADI_ADC_INFO *pInfo)
     uint8_t numAdc = pAdcCfg->numAdc;
     uint8_t addr;
     uint8_t value;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
     ADI_ADC_CMD *pCmd;
 
     for (idx = 0; idx < numAdc; idx++)
     {
         addr = pTypeConfig[idx].configReg.status0.addr;
         value = pTypeConfig[idx].configReg.status0.value;
-        pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
+        pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[idx] + pTypeConfig[idx].cmdOffset);
         status = adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, ADI_ADC_RWB_WRITE, addr, value,
                                          pCmd, pAdcCfg->frameFormat);
         if (status != ADI_ADC_STATUS_SUCCESS)

@@ -38,7 +38,7 @@ ADI_ADC_STATUS AdcWriteRegister(ADI_ADC_INFO *pInfo, uint16_t address, uint8_t v
         }
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+            AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
         }
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
@@ -117,14 +117,14 @@ ADI_ADC_STATUS AdcReadRegister(ADI_ADC_INFO *pInfo, uint16_t address, int8_t adc
         {
             /* Issue a NOP command in order to receive the register value along
                with its response. */
-            AdcAssembleNopAllAdc(pInfo, &pInfo->txCmdFramePtr[0]);
+            AdcAssembleNopAllAdc(pInfo, &pInfo->pTxCmdFramePtr[0]);
             /* Transmit the NOP command over SPI to the ADC and get data
                for the previous READ command */
             status = TransferAdcData(pInfo);
         }
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            pRxFrame = pInfo->rxFramePtr[pInfo->rxBuffer.frameReadIdx];
+            pRxFrame = pInfo->pRxFramePtr[pInfo->rxBuffer.frameReadIdx];
             /* Copy data Field from the Rx frame to the destination buffer */
             CopyDataFromRxFrame(pInfo, adcIdx, pRxFrame, pBuffer, pNumBytes);
         }
@@ -144,10 +144,10 @@ static ADI_ADC_STATUS AssembleReadWrite(ADI_ADC_INFO *pInfo, uint8_t operation, 
     int32_t i = 0;
     uint8_t numAdc = pInfo->adcCfg.numAdc;
     ADI_ADC_CMD *pCmd;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->pTypeConfig[0];
     ADI_ADC_CONFIG *pAdcCfg = &pInfo->adcCfg;
 
-    memset(pInfo->txBufferCmd, 0xFF, sizeof(pInfo->txBufferCmd));
+    memset(pInfo->pTxBufferCmd, 0xFF, sizeof(uint8_t) * numAdc * ADI_ADC_LONG_FRAME_NBYTES_MAX);
     if (adcIdx < numAdc)
     {
         if (adcIdx == -1)
@@ -155,7 +155,7 @@ static ADI_ADC_STATUS AssembleReadWrite(ADI_ADC_INFO *pInfo, uint8_t operation, 
             /* Assemble command for all ADCs */
             for (i = 0; i < numAdc; i++)
             {
-                pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[i] + pTypeConfig[i].cmdOffset);
+                pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[i] + pTypeConfig[i].cmdOffset);
                 status |= adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, operation, address, value,
                                                   pCmd, pAdcCfg->frameFormat);
             }
@@ -167,13 +167,13 @@ static ADI_ADC_STATUS AssembleReadWrite(ADI_ADC_INFO *pInfo, uint8_t operation, 
             {
                 if (i == adcIdx)
                 {
-                    pCmd = (ADI_ADC_CMD *)(pInfo->txCmdFramePtr[i] + pTypeConfig[i].cmdOffset);
+                    pCmd = (ADI_ADC_CMD *)(pInfo->pTxCmdFramePtr[i] + pTypeConfig[i].cmdOffset);
                     status |= adi_adc_AssembleCommand(pAdcCfg->pfCalcCmdCrc, operation, address,
                                                       value, pCmd, pAdcCfg->frameFormat);
                 }
                 else
                 {
-                    status |= AssembleNop(pInfo, &pTypeConfig[i], pInfo->txCmdFramePtr[i]);
+                    status |= AssembleNop(pInfo, &pTypeConfig[i], pInfo->pTxCmdFramePtr[i]);
                 }
             }
         }
@@ -194,7 +194,7 @@ ADI_ADC_STATUS CopyDataFromRxFrame(ADI_ADC_INFO *pInfo, int8_t adcIdx, uint8_t *
     uint8_t numBytesInData = 2;
     int32_t i;
     uint8_t numAdc = pInfo->adcCfg.numAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->pTypeConfig[0];
     uint8_t frameStartIdx = 0;
 
     if (adcIdx < numAdc)

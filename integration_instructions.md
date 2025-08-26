@@ -15,14 +15,23 @@ Follow these steps to set up data collection from an ADC using the ADC Service:
    git clone --recursive https://github.com/analogdevicesinc/energy-adc-service.git
    ```
 
-2. **Create your application folder:**
-   - Copy the [examples](examples) folder to a new location for your application.
+2. **Set up your application folder:**
+   - Create a new folder for your application within the repository.
+   - Add a configuration header to specify ADC parameters (e.g., number of ADCs). See [`app_cfg.h`](examples/projects/config/app_cfg.h) for reference.
 
-3. **Update your CMake configuration:**
-   - Edit [CMakeLists.txt](examples/projects/CMakeLists.txt) to include your application sources.
-   - The example CMakeLists already includes ADC Service, ADE Registers, and interface sources.
-   - Update the configuration headers in [examples/projects/config](examples/projects/config) with settings for your application board.
-   - Update the SPI driver and CRC routines in [adc_service_adapter.c](interface/source/adc_service_adapter.c) to point to your device's drivers.
+3. **Integrate interface and adapter files:**
+   - Copy the interface files (e.g., [`adc_service_adapter.c`](interface/source/adc_service_adapter.c) and [`adc_service_adapter.h`](interface/include/adc_service_adapter.h)) into your application.
+   - Modify these files as needed to connect the ADC Service to your MCU's SPI and GPIO drivers.
+
+4. **Add external dependencies:**
+   - Make sure your project includes CRC calculation routines required by the ADC Service.
+   - Integrate or implement the necessary peripheral drivers (e.g., SPI for ADC communication).
+
+5. **Configure your build system:**
+   - Update your `CMakeLists.txt` (or equivalent build configuration) to include your application sources and the ADC Service `source` and `include` directories.
+   - Refer to the [`example CMakeLists.txt`](examples/projects/CMakeLists.txt) for guidance.
+
+After completing these steps, you can build your application and begin collecting data from the ADC using the ADC Service.
 
 The following sections provide more details on how to optimize and customize the ADC Service for different applications.
 
@@ -40,7 +49,7 @@ See [adc_service_adapter.c](interface/source/adc_service_adapter.c) for an examp
 
 ## CRC Configuration
 
-ADEMA12x and ADE9113 ADCs use CRC to verify communication data integrity. The ADC Service expects your application to provide routines for CRC calculation. You may reuse the CRC service code provided in this release. See the [adapter file](interface/source/adc_service_adapter.c) for an example.
+ADEMA12x and ADE9113 ADCs use CRC to verify communication data integrity. The ADC Service expects your application to provide routines for CRC calculation. See the [adapter file](interface/source/adc_service_adapter.c) for an example.
 
 ## ADC Service APIs
 
@@ -57,7 +66,8 @@ You can create multiple instances of the ADC Service by declaring handles of typ
 To integrate the ADC Service into your application:
 
 - Set `ADI_ADC_CONFIG.numAdc` to the number of ADCs you wish to use (typically 1 for most applications).
-- Set `ADI_ADC_CONFIG.adcType` to the appropriate value from the `ADI_ADC_TYPE` enumeration.
+- Set `ADI_ADC_CONFIG.pAdcType` to the appropriate value from the `ADI_ADC_TYPE` enumeration.
 - Alternatively, you can call `AdcIfInitService` with `numAdc` and `pAdcType` as described above for each application instance.
 
 Customize configuration headers, SPI drivers, and CRC routines as needed for your hardware and use case.
+

@@ -119,7 +119,7 @@ static ADI_ADC_STATUS SetFrameFormatAdema127(ADI_ADC_HANDLE hAdc, uint8_t format
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     ADI_ADC_INFO *pInfo = (ADI_ADC_INFO *)hAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
 
     if (format == ADI_ADC_FRAME_FORMAT_LONG)
     {
@@ -146,7 +146,7 @@ static ADI_ADC_STATUS SetFrameFormatAdema124(ADI_ADC_HANDLE hAdc, uint8_t format
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     ADI_ADC_INFO *pInfo = (ADI_ADC_INFO *)hAdc;
-    ADC_TYPE_CONFIG *pTypeConfig = &pInfo->typeConfig[0];
+    ADC_TYPE_CONFIG *pTypeConfig = pInfo->pTypeConfig;
 
     if (format == ADI_ADC_FRAME_FORMAT_LONG)
     {

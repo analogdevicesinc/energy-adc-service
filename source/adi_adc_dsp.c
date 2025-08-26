@@ -82,24 +82,24 @@ ADI_ADC_STATUS adi_adc_SetChannelParams(ADI_ADC_HANDLE hAdc,
     else
     {
         adcStatus =
-            adi_adc_SetChannelGain(pInfo, &pDspRegisters->gain[0], pChanIdx, numChannel, adcIdx);
+            adi_adc_SetChannelGain(pInfo, &pDspRegisters->pGain[0], pChanIdx, numChannel, adcIdx);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
-            adcStatus = adi_adc_SetChannelOffset(pInfo, &pDspRegisters->offset[0], pChanIdx,
+            adcStatus = adi_adc_SetChannelOffset(pInfo, &pDspRegisters->pOffset[0], pChanIdx,
                                                  numChannel, adcIdx);
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
-                adcStatus =
-                    adi_adc_SetShift(pInfo, &pDspRegisters->shift[0], pChanIdx, numChannel, adcIdx);
+                adcStatus = adi_adc_SetShift(pInfo, &pDspRegisters->pShift[0], pChanIdx, numChannel,
+                                             adcIdx);
             }
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
-                adcStatus = adi_adc_SetChannelXtGain(pInfo, &pDspRegisters->xtGain[0], pChanIdx,
+                adcStatus = adi_adc_SetChannelXtGain(pInfo, &pDspRegisters->pXtGain[0], pChanIdx,
                                                      numChannel, adcIdx);
             }
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
-                adcStatus = adi_adc_SetChannelXtAggressor(pInfo, &pDspRegisters->xtAggressor[0],
+                adcStatus = adi_adc_SetChannelXtAggressor(pInfo, &pDspRegisters->pXtAggressor[0],
                                                           pChanIdx, numChannel, adcIdx);
             }
         }
@@ -119,25 +119,25 @@ ADI_ADC_STATUS adi_adc_GetChannelParams(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx, 
     else
     {
         adcStatus =
-            adi_adc_GetChannelGain(pInfo, pChanIdx, numChannel, adcIdx, &pDspRegisters->gain[0]);
+            adi_adc_GetChannelGain(pInfo, pChanIdx, numChannel, adcIdx, &pDspRegisters->pGain[0]);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
             adcStatus = adi_adc_GetChannelOffset(pInfo, pChanIdx, numChannel, adcIdx,
-                                                 &pDspRegisters->offset[0]);
+                                                 &pDspRegisters->pOffset[0]);
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
-                adcStatus =
-                    adi_adc_GetShift(pInfo, pChanIdx, numChannel, adcIdx, &pDspRegisters->shift[0]);
+                adcStatus = adi_adc_GetShift(pInfo, pChanIdx, numChannel, adcIdx,
+                                             &pDspRegisters->pShift[0]);
             }
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
                 adcStatus = adi_adc_GetChannelXtGain(pInfo, pChanIdx, numChannel, adcIdx,
-                                                     &pDspRegisters->xtGain[0]);
+                                                     &pDspRegisters->pXtGain[0]);
             }
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
                 adcStatus = adi_adc_GetChannelXtAggressor(pInfo, pChanIdx, numChannel, adcIdx,
-                                                          &pDspRegisters->xtAggressor[0]);
+                                                          &pDspRegisters->pXtAggressor[0]);
             }
         }
     }
@@ -170,12 +170,12 @@ ADI_ADC_STATUS adi_adc_SetDatapathParams(ADI_ADC_HANDLE hAdc,
             adcStatus = adi_adc_SetDatapathAlpha(pInfo, (uint8_t *)&pDspRegisters->alpha, adcIdx);
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
-                adcStatus = adi_adc_EnableDatapathConfig(pInfo, &pDspRegisters->dataPathConfig[0],
+                adcStatus = adi_adc_EnableDatapathConfig(pInfo, &pDspRegisters->pDataPathConfig[0],
                                                          pChanIdx, numChannel, adcIdx);
                 if (adcStatus == ADI_ADC_STATUS_SUCCESS)
                 {
-                    adcStatus = adi_adc_SetChannelPhaseOffset(pInfo, &pDspRegisters->phaseOffset[0],
-                                                              pChanIdx, numChannel, adcIdx);
+                    adcStatus = adi_adc_SetChannelPhaseOffset(
+                        pInfo, &pDspRegisters->pPhaseOffset[0], pChanIdx, numChannel, adcIdx);
                 }
             }
         }
@@ -199,7 +199,7 @@ ADI_ADC_STATUS adi_adc_GetDatapathParams(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx,
     {
 
         adcStatus = adi_adc_GetDatapathConfig(pInfo, pChanIdx, numChannel, adcIdx,
-                                              &pDspRegisters->dataPathConfig[0]);
+                                              &pDspRegisters->pDataPathConfig[0]);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
             adcStatus =
@@ -211,7 +211,7 @@ ADI_ADC_STATUS adi_adc_GetDatapathParams(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx,
                 if (adcStatus == ADI_ADC_STATUS_SUCCESS)
                 {
                     adcStatus = adi_adc_GetChannelPhaseOffset(pInfo, pChanIdx, numChannel, adcIdx,
-                                                              &pDspRegisters->phaseOffset[0]);
+                                                              &pDspRegisters->pPhaseOffset[0]);
                 }
             }
         }
@@ -528,6 +528,7 @@ ADI_ADC_STATUS adi_adc_SetShift(ADI_ADC_HANDLE hAdc, uint8_t *pShiftVal, uint8_t
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     ADI_ADC_INFO *pInfo;
     int8_t chan = 0;
+    uint32_t idx;
 
     if (hAdc == NULL)
     {
@@ -546,7 +547,8 @@ ADI_ADC_STATUS adi_adc_SetShift(ADI_ADC_HANDLE hAdc, uint8_t *pShiftVal, uint8_t
             adcStatus = AdcSetShift(pInfo, pShiftVal, pChanIdx, numChan, adcIdx);
             for (chan = 0; chan < numChan; chan++)
             {
-                pInfo->datapathShift[adcIdx][pChanIdx[chan]] = pShiftVal[chan];
+                idx = (adcIdx * pInfo->maxNumChannel) + pChanIdx[chan];
+                pInfo->pDatapathShift[idx] = pShiftVal[chan];
             }
         }
     }
@@ -846,7 +848,7 @@ static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcIdx)
         {
             for (int i = 0; i < pInfo->adcCfg.numAdc; i++)
             {
-                if (pInfo->adcCfg.adcType[i] == ADI_ADC_TYPE_ADE91XX)
+                if (pInfo->adcCfg.pAdcType[i] == ADI_ADC_TYPE_ADE91XX)
                 {
                     status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
                     break;
@@ -855,7 +857,7 @@ static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcIdx)
         }
         else if (adcIdx >= 0 && adcIdx < pInfo->adcCfg.numAdc)
         {
-            if (pInfo->adcCfg.adcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+            if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
             {
                 status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
             }
@@ -874,6 +876,7 @@ static void StoreDatapathScfEnable(ADI_ADC_INFO *pInfo,
                                    uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx)
 {
     int8_t i, chan;
+    uint32_t idx;
 
     if (adcIdx == -1)
     {
@@ -881,7 +884,8 @@ static void StoreDatapathScfEnable(ADI_ADC_INFO *pInfo,
         {
             for (chan = 0; chan < numChan; chan++)
             {
-                pInfo->datapathScfEn[i][pChanIdx[chan]] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
+                idx = (i * pInfo->maxNumChannel) + pChanIdx[chan];
+                pInfo->pDatapathScfEn[idx] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
             }
         }
     }
@@ -889,7 +893,8 @@ static void StoreDatapathScfEnable(ADI_ADC_INFO *pInfo,
     {
         for (chan = 0; chan < numChan; chan++)
         {
-            pInfo->datapathScfEn[adcIdx][pChanIdx[chan]] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
+            idx = (adcIdx * pInfo->maxNumChannel) + pChanIdx[chan];
+            pInfo->pDatapathScfEn[idx] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
         }
     }
 }

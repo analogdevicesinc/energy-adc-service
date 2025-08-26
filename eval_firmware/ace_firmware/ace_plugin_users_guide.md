@@ -71,23 +71,25 @@
 
 ## 4. Using the Plugin
 
-### A. Register Access
+### 4A. Attributes Reference
 
-1. Click `apply_settings` button to initialize ADC with recommended settings.
-2. Read/write ADEMA127 registers in 'Proceed to Memory Map':
-   ![Memory Map](./ace_plugin_images/adema127_memory_map.png)
+#### Global Attributes
 
-### B. Sample Collection & Analysis
+- `firmware_version`: ADC service version
+- `build_id`: Git commit ID
+- `board_type`: Type of ADC board (default: EVAL-ADEMA127KTZ)
+- `choose_settings`: Load recommended/default settings
+- `apply-settings`: Apply chosen settings
+- `start-tamper-detect` / `stop-tamper-detect`: Enable/disable Tamper Detection Mode
+- `tamper_count`: Number of tamper events since last reset
 
-- Click 'Proceed to Analysis' section.
-- Up to 10,000 samples can be collected using 'Run Once':
-  ![Analysis Window](./ace_plugin_images/adema127_analysis_window.png)
+#### Channel Attributes
 
----
+- `chn_gain`, `chn_offset`, `chn_datapath_config`, `chn_shift`, `scale`, `chn_integer_sample_delay`, `chn_xt_gain`, `chn_xt_aggressor`
 
+Set `choose_settings` attribute to default or recommended and click `apply-settings` button.
 
-## 6. Interactive Chip View
-
+### 4B. Interactive Chip View
 ![Chip View](./ace_plugin_images/ADEMA127.png)
 
 - **Chan Selector**: Choose one of 7 channels.
@@ -99,21 +101,15 @@
 - **Interpolator**: Enter phase offset (see datasheet).
 - **DC Block**: Set alpha_chx via dropdown; click 'Apply Changes'.
 
----
+### 4C. Register Access
 
-## 5. Attributes Reference
+1. Click `apply-settings` button to initialize ADC with chosen settings.
+2. Read/write ADEMA127 registers in 'Proceed to Memory Map':
+   ![Memory Map](./ace_plugin_images/adema127_memory_map.png)
 
-### Global Attributes
+### 4D. Sample Collection & Analysis
 
-- `firmware_version`: ADC service version
-- `build_id`: Git commit ID
-- `board_type`: Type of ADC board (default: EVAL-ADEMA127KTZ)
-- `choose_settings`: Load recommended/default settings
-- `apply_settings`: Apply chosen settings
-- `start-tamper-detect` / `stop-tamper-detect`: Enable/disable Tamper Detection Mode
-- `tamper_count`: Number of tamper events since last reset
-
-### Channel Attributes
-
-- `chn_gain`, `chn_offset`, `chn_datapath_config`, `chn_shift`, `scale`, `chn_integer_sample_delay`, `chn_xt_gain`, `chn_xt_aggressor`
+- Click 'Proceed to Analysis' section.
+- Up to 10,000 samples can be collected using 'Run Once':
+  ![Analysis Window](./ace_plugin_images/adema127_analysis_window.png)
 

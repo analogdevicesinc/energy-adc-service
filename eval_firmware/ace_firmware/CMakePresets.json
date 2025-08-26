@@ -1,99 +1,34 @@
 {
-    "version": 3,
+    "version": 4,
+    "include": ["CommonPresets.json"],
     "configurePresets": [
         {
-            "name": "default",
-            "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "debug-H563",
+            "name": "Debug",
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "EVB": "nucleo_h563zi"
+                "EVB": "app_mcu_h5",
+                "TOOLCHAIN": "gcc-arm-none-eabi"
             }
         },
         {
-            "name": "debug-H573",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "EVB": "app_mcu_h5"
-            }
-        },
-        {
-            "name": "debug-H7",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "EVB": "app_mcu_h7"
-            }
-        },
-        {
-            "name": "RelWithDbgInfo",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDbgInfo"
-            }
-        },
-        {
-            "name": "release-H563",
+            "name": "Release",
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "EVB": "nucleo_h563zi"
-            }
-        },
-        {
-            "name": "release-H573",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "EVB": "app_mcu_h5"
-            }
-        },
-        {
-            "name": "release-H7",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "EVB": "app_mcu_h7"
+                "EVB": "app_mcu_h5",
+                "TOOLCHAIN": "gcc-arm-none-eabi"
             }
         }
     ],
     "buildPresets": [
         {
-            "name": "debug-H563",
-            "configurePreset": "debug-H563"
+            "name": "Debug",
+            "configurePreset": "Debug"
         },
         {
-            "name": "debug-H573",
-            "configurePreset": "debug-H573"
-        },
-        {
-            "name": "debug-H7",
-            "configurePreset": "debug-H7"
-        },
-        {
-            "name": "release-H563",
-            "configurePreset": "release-H563"
-        },
-        {
-            "name": "release-H573",
-            "configurePreset": "release-H573"
-        },
-        {
-            "name": "release-H7",
-            "configurePreset": "release-H7"
-        },
-        {
-            "name": "RelWithDbgInfo",
-            "configurePreset": "RelWithDbgInfo"
+            "name": "Release",
+            "configurePreset": "Release"
         }
     ]
 }
