@@ -10,21 +10,73 @@
 
 /* Max number of samples to buffer */
 #define ADC_NUM_SAMPLES_REQUIRED 64000
-/* Max number of channels */
-#define TOTAL_CHANNELS (APP_CFG_MAX_NUM_VOLTAGE_CHANNELS + APP_CFG_MAX_NUM_CURRENT_CHANNELS)
 
-static uint8_t voltageSlots[APP_CFG_MAX_NUM_VOLTAGE_CHANNELS] = {2, 6, 3};
-static uint8_t currentSlots[APP_CFG_MAX_NUM_CURRENT_CHANNELS] = {0, 4, 1, 5};
+#if BOARD_TYPE_BCM_ADEMA127
+static uint8_t numVoltageChannels = 3;
+static uint8_t numCurrentChannels = 25;
+static uint8_t numTotalAdcChannels = 28;
+static uint32_t channelMask = 0xFFFFFFF;
+
+static ADC_BOARD_CONFIG adcBoardConfig = {
+    .voltageSlots = {2, 1, 0},
+    .currentSlots = {3,  7,  4,  8,  5,  9,  6,  10, 14, 11, 15, 12, 16,
+                     13, 17, 21, 18, 22, 19, 23, 20, 24, 25, 26, 27},
+    .numAdc = 4,
+    .adcType = {ADI_ADC_TYPE_ADEMA127, ADI_ADC_TYPE_ADEMA127, ADI_ADC_TYPE_ADEMA127,
+                ADI_ADC_TYPE_ADEMA127},
+    .clkIn = 16384000,
+    .adcSamplingRate = 8000,
+    .decimateBy2 = 1,
+    .adcInv = {0},
+    .adcStreamMode = ADI_ADC_STREAM_MODE_NORM,
+};
+
+#elif BOARD_TYPE_BCM_ADE9113_ADEMA127
+static uint8_t numVoltageChannels = 3;
+static uint8_t numCurrentChannels = 21;
+static uint8_t numTotalAdcChannels = 24;
+static uint32_t channelMask = 0xFFFFFFF;
+
+static ADC_BOARD_CONFIG adcBoardConfig = {
+    .voltageSlots = {2, 1, 0},
+    .currentSlots = {3, 7, 4, 8, 5, 9, 6, 10, 14, 11, 15, 12, 16, 13, 17, 21, 18, 22, 19, 23, 20},
+    .numAdc = 4,
+    .adcType = {ADI_ADC_TYPE_ADE91XX, ADI_ADC_TYPE_ADEMA127, ADI_ADC_TYPE_ADEMA127,
+                ADI_ADC_TYPE_ADEMA127},
+    .clkIn = 16384000,
+    .adcSamplingRate = 8000,
+    .decimateBy2 = 1,
+    .adcInv = {0},
+    .adcStreamMode = ADI_ADC_STREAM_MODE_NORM,
+};
+
+#else
+static uint8_t numVoltageChannels = 3;
+static uint8_t numCurrentChannels = 4;
+static uint8_t numTotalAdcChannels = 7;
+static uint32_t channelMask = 0x7F;
+
+static ADC_BOARD_CONFIG adcBoardConfig = {
+    .voltageSlots = {2, 3, 6},
+    .currentSlots = {0, 1, 4, 5},
+    .numAdc = 1,
+    .adcType = {ADI_ADC_TYPE_ADEMA127},
+    .clkIn = 16384000,
+    .adcSamplingRate = 8000,
+    .decimateBy2 = 1,
+    .adcInv = {0},
+    .adcStreamMode = ADI_ADC_STREAM_MODE_NORM,
+};
+
+#endif
 
 static int32_t adcSamples[ADC_NUM_SAMPLES_REQUIRED];
 static volatile int32_t dready = 0;
 static volatile int32_t spiComplete = 0;
 static ADC_INTERFACE_INFO adcsIf;
 static ADI_EVB_CONFIG evbConfig;
-static ADC_BOARD_CONFIG adcBoardConfig;
 static void *hEvb;
 
-static void PopulateBoardConfig(ADC_BOARD_CONFIG *pAdcBoardConfig);
 static void DreadyCallback(uint32_t port, uint32_t pin);
 static void SpiRxCallback(void);
 static void PrintOutput(int32_t *pSamples, int32_t numSamples);
@@ -33,14 +85,14 @@ int main()
 {
     int32_t i;
     int32_t numSamples = 0;
-    int32_t numRequiredSamples = (ADC_NUM_SAMPLES_REQUIRED / TOTAL_CHANNELS) * TOTAL_CHANNELS;
+    int32_t numRequiredSamples =
+        (ADC_NUM_SAMPLES_REQUIRED / numTotalAdcChannels) * numTotalAdcChannels;
     int32_t numSamplesPerChannelToDisplay = 10;
     ADC_INTERFACE_INFO *pAdcsIf = &adcsIf;
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     int32_t status = 0;
     int32_t numAdc;
     int32_t *pSamples = &adcSamples[0];
-    uint32_t channelMask = 0x7F;
 
     ADI_EVB_CONFIG *pEvbConfig = &evbConfig;
     pEvbConfig->spiConfig.pfAdeSpiRxCallback = SpiRxCallback;
@@ -53,10 +105,12 @@ int main()
     /* Create ADC Service */
     AdcIfCreateService(pAdcsIf);
 
-    PopulateBoardConfig(&adcBoardConfig);
     pAdcsIf->pfCallback = NULL;
     status = AdcIfInitService(pAdcsIf, &adcBoardConfig);
-    status = AdcIfStartCapture(pAdcsIf);
+    if (status == 0)
+    {
+        status = AdcIfStartCapture(pAdcsIf);
+    }
 
     if (status == 0)
     {
@@ -89,11 +143,11 @@ int main()
 #ifdef DISABLE_ASCII_OUT
     printf("Collected %d samples\n", numSamples);
     printf("Displaying first %d samples per channel:\n", numSamplesPerChannelToDisplay);
-    PrintOutput(pSamples, 10);
+    PrintOutput(pSamples, numSamplesPerChannelToDisplay);
     EvbFlushMessages();
 #else
     /* Send samples to host */
-    EvbHostUartTransmitAsync(hEvb, (uint8_t *)pSamples, numRequiredSamples * sizeof(int32_t));
+    EvbHostCommTransmitAsync(hEvb, (uint8_t *)pSamples, numRequiredSamples * sizeof(int32_t));
 #endif
     /* Check whether data contains proper output*/
     while (1)
@@ -114,17 +168,17 @@ void PrintOutput(int32_t *pSamples, int32_t numSamples)
     for (i = 0; i < numSamples; i++)
     {
         // Print voltage channels
-        for (int32_t j = 0; j < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; j++)
+        for (int32_t j = 0; j < numVoltageChannels; j++)
         {
-            printf("V%d:0x%04X ", j, pSamples[voltageSlots[j]]);
+            printf("V%d:0x%04X ", j, pSamples[adcBoardConfig.voltageSlots[j]]);
         }
         // Print current channels
-        for (int32_t j = 0; j < APP_CFG_MAX_NUM_CURRENT_CHANNELS; j++)
+        for (int32_t j = 0; j < numCurrentChannels; j++)
         {
-            printf("I%d:0x%04X ", j, pSamples[currentSlots[j]]);
+            printf("I%d:0x%04X ", j, pSamples[adcBoardConfig.currentSlots[j]]);
         }
         // Move pointer to next sample set
-        pSamples += (APP_CFG_MAX_NUM_VOLTAGE_CHANNELS + APP_CFG_MAX_NUM_CURRENT_CHANNELS);
+        pSamples += (numVoltageChannels + numCurrentChannels);
         printf("\n");
     }
 }
@@ -151,32 +205,6 @@ void DreadyCallback(uint32_t port, uint32_t pin)
 void SpiRxCallback()
 {
     spiComplete = 1;
-}
-
-/**
- * @brief Populate ADC interface inputs
- */
-static void PopulateBoardConfig(ADC_BOARD_CONFIG *pAdcBoardConfig)
-{
-    uint8_t i = 0;
-    pAdcBoardConfig->numAdc = 1;
-    for (i = 0; i < APP_CFG_MAX_NUM_VOLTAGE_CHANNELS; i++)
-    {
-        pAdcBoardConfig->voltageSlots[i] = voltageSlots[i];
-    }
-    for (i = 0; i < APP_CFG_MAX_NUM_CURRENT_CHANNELS; i++)
-    {
-        pAdcBoardConfig->currentSlots[i] = currentSlots[i];
-    }
-
-    for (i = 0; i < (pAdcBoardConfig->numAdc); i++)
-    {
-        pAdcBoardConfig->adcType[i] = ADI_ADC_TYPE_ADEMA127;
-    }
-    pAdcBoardConfig->adcStreamMode = ADI_ADC_STREAM_MODE_NORM;
-    pAdcBoardConfig->adcSamplingRate = APP_CFG_ADC_SAMPLING_RATE;
-    pAdcBoardConfig->clkIn = APP_CFG_ADC_MCLK;
-    pAdcBoardConfig->decimateBy2 = APP_CFG_ADC_DECIMATION_BY2;
 }
 
 ADI_ADC_STATUS AdcIfWaitAdcResponse(ADC_INTERFACE_INFO *pInfo)

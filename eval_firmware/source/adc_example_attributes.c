@@ -45,7 +45,7 @@ static void SetChanXtAggressorAttr(uint8_t *pChanIdx, uint8_t *pValue, uint8_t v
 static void SetChanOffsetAttr(uint8_t *pChanIdx, int8_t *pValue, uint8_t valueSize);
 static void SetChanIntegerSampleDelayAttr(uint8_t *pChanIdx, int8_t *pValue, uint8_t valueSize);
 static void SetChanShiftAttr(uint8_t *pChanIdx, uint8_t *pValue, uint8_t valueSize);
-static void SetSamplingRate();
+static ADI_ADC_STATUS SetSamplingRate(void);
 static uint32_t ExtractDatapathConfig(ADI_ADC_CHAN_DATAPATH_CONFIG dataPathConfig);
 static void ResetAdc(void);
 static void ChooseSettings(uint8_t *pValue);
@@ -59,8 +59,9 @@ char *pAdcExampleSettings[] = {"recommended", "default_adema127"};
 
 /*=============  C O D E  =============*/
 
-int SetAttribute(int32_t attrId, uint8_t *pChanIdx, uint8_t *pValue, uint8_t valueSize)
+int32_t SetAttribute(int32_t attrId, uint8_t *pChanIdx, uint8_t *pValue, uint8_t valueSize)
 {
+    int32_t status = 0;
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
     ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
     ADC_INTERFACE_INFO *pAdcIf = pExample->pAdcIf;
@@ -130,13 +131,13 @@ int SetAttribute(int32_t attrId, uint8_t *pChanIdx, uint8_t *pValue, uint8_t val
         break;
 
     case ADC_EXAMPLE_ATTR_ID_SAMPLING_RATE:
-        SetSamplingRate();
+        status = (int32_t)SetSamplingRate();
         break;
     default:
         return -EINVAL;
     }
 
-    return 0;
+    return status;
 }
 
 int GetAttribute(int32_t attrId, int32_t *pChanIdx, uint32_t *pValue, uint8_t *pValueSize)
@@ -222,27 +223,20 @@ int GetAttribute(int32_t attrId, int32_t *pChanIdx, uint32_t *pValue, uint8_t *p
     return 0;
 }
 
-void SetSamplingRate()
+ADI_ADC_STATUS SetSamplingRate(void)
 {
-    int32_t status = 0;
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
     ADC_INTERFACE_INFO *pAdcIf = pExample->pAdcIf;
     ADC_BOARD_CONFIG *pAdcBoardConfig = AdcExmGetBoardConfig();
-    status = adi_adcutil_PopulateSamplingRate(
+    adcStatus = adi_adcutil_PopulateSamplingRate(
         pAdcBoardConfig->clkIn, pAdcBoardConfig->adcSamplingRate, pAdcBoardConfig->decimateBy2,
         pAdcIf->adcCfg.numAdc, &pAdcIf->adcCfg.pAdcType[0], &pAdcIf->configRegisters[0]);
     if (adcStatus == ADI_ADC_STATUS_SUCCESS)
     {
         adcStatus = adi_adc_SetSamplingRate(pAdcIf->hAdc, &pAdcIf->configRegisters[0]);
     }
-    if (adcStatus != ADI_ADC_STATUS_SUCCESS)
-    {
-        status = 1;
-    }
-    if (status != 0)
-    {
-    }
+    return adcStatus;
 }
 
 int32_t SetDatapathConfig(ADC_INTERFACE_INFO *pAdcIf, uint8_t *pChanIdx, uint8_t adcIndex,
@@ -266,7 +260,7 @@ int32_t SetDatapathConfig(ADC_INTERFACE_INFO *pAdcIf, uint8_t *pChanIdx, uint8_t
         (writeVal >> 6) & 1;
     pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[*pChanIdx].reserved =
         (writeVal >> 7) & 1;
-    adcStatus = AdcIfEnableDatapath(
+    adcStatus = AdcIfSetDatapathConfig(
         pAdcIf, &pAdcIf->adcRegParams[adcIndex].adcDatapathParams.pDataPathConfig[0], pChanIdx, 1,
         adcIndex);
     if (adcStatus != ADI_ADC_STATUS_SUCCESS)
@@ -417,6 +411,7 @@ void ResetAdc()
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
     ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
     ADC_INTERFACE_INFO *pAdcIf = pExample->pAdcIf;
+    bool isSampleCaptureEnabled = pAdcIf->enableRun;
     // When ADC is reset,  all registers except DSP RAM addresses are reset.
     // Hence, lock datapath config to reset DSP RAM region.
     AdcIfStopCapture(pAdcIf);
@@ -436,9 +431,18 @@ void ResetAdc()
     {
         // Handle error
     }
+#ifdef USE_SIMUL_ADC
+    ADI_ADC_CONFIG *pConfig = &pAdcIf->adcCfg;
+    EvbConnectAdc(pConfig->numAdc, &pConfig->pAdcType[0]);
+#else
     status = EvbResetAdcs();
+#endif
     if (status != ADI_ADC_STATUS_SUCCESS)
     {
+    }
+    if (isSampleCaptureEnabled)
+    {
+        AdcIfStartCapture(pAdcIf);
     }
 }
 
@@ -529,7 +533,23 @@ int32_t DebugRegWrite(uint32_t address, uint32_t value)
         EvbLedOn(2);
     }
 
-    adcStatus = AdcIfWriteRegister(pAdcIf, (uint16_t)address, (uint8_t)value, adcIdx);
+    if (address == ADDR_ADEMA127_MMR_RETAINED_ADC_CMI)
+    {
+        adcStatus = AdcIfSetAdcCmi(pAdcIf, adcIdx, (uint8_t)value);
+    }
+    else if (address == ADDR_ADEMA127_MMR_RETAINED_ADC_GAIN)
+    {
+        adcStatus = AdcIfSetAdcGain(pAdcIf, adcIdx, (uint8_t)value);
+    }
+    else
+    {
+        adcStatus = AdcIfWriteRegister(pAdcIf, (uint16_t)address, (uint8_t)value, adcIdx);
+    }
+
+    if (adcStatus != ADI_ADC_STATUS_SUCCESS)
+    {
+        EvbLedOn(2);
+    }
 
     if ((address >= ADDR_ADEMA127_MMR_DATARATE &&
          address <= ADDR_ADEMA127_MMR_PHASE_OFFSET_CH6_LO) ||

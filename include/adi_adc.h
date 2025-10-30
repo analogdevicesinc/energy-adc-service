@@ -114,10 +114,10 @@ typedef enum
 {
     /** Normal mode */
     ADI_ADC_STREAM_MODE_NORM = 0u,
-    /** Incremental mode */
-    ADI_ADC_STREAM_MODE_INCR,
     /** Static mode */
     ADI_ADC_STREAM_MODE_STATIC,
+    /** Incremental mode */
+    ADI_ADC_STREAM_MODE_INCR,
 } ADI_ADC_STREAM_MODE;
 
 /**
@@ -245,6 +245,8 @@ typedef enum
     ADI_ADC_STATUS_INVALID_SAMPLE_DELAY,
     /** Value of channel index passed to the function is invalid. */
     ADI_ADC_STATUS_INVALID_CHANNEL_INDEX,
+    /** Value being written to the register is invalid. */
+    ADI_ADC_STATUS_INVALID_REGISTER_VALUE
 } ADI_ADC_STATUS;
 
 /** @} */
@@ -481,7 +483,7 @@ ADI_ADC_STATUS adi_adc_ResetFrameBuffer(ADI_ADC_HANDLE hAdc);
  * #ADI_ADC_STATUS_NULL_PTR \n
  * #ADI_ADC_STATUS_CRC_CALC_FAILED \n
  */
-ADI_ADC_STATUS adi_adc_EnableClockOut(ADI_ADC_HANDLE hAdc, uint8_t adcIdx);
+ADI_ADC_STATUS adi_adc_SetClockOut(ADI_ADC_HANDLE hAdc, uint8_t adcIdx);
 
 /**
  * @brief Function to configure the ADCs. This API writes different ADC registers and brings the
@@ -497,6 +499,36 @@ ADI_ADC_STATUS adi_adc_EnableClockOut(ADI_ADC_HANDLE hAdc, uint8_t adcIdx);
  * #ADI_ADC_STATUS_CRC_CALC_FAILED \n
  * #ADI_ADC_STATUS_TRANSCEIVE_FAILED \n
  * #ADI_ADC_STATUS_CRC_ERROR \n
+ *
+ * @details
+ * The following register operations are performed by this API for
+ * **ADE91xx** devices:
+ *
+ * | Step | Register | Operation | Description |
+ * |------|-----------|------------|-------------|
+ * | 1 | **STATUS0** | Write | Clears the **SPI_CRC_ERR** bit. |
+ * | 2 | **MASK2** | Write | Enables all interrupt masks. |
+ * | 3 | **CONFIG0** | Write | Configures stream mode and enables CRC check on SPI writes. |
+ * | 4 | **CONFIG_FILT** | Write | Sets the **DATAPATH_CONFIG** to configure the sampling rate. |
+ * | 5 | **SYNC_SNAP**, **STATUS2** | Write, read | Write **ALIGN**, read **STATUS2** for ADC Sync |
+ * | 6 | **STATUS2** | Read | Verifies if any error bits are set in STATUS2, STATUS1, and STATUS0. |
+ * | 7 | **CONFIG_CRC** | Write | Forces register map CRC recalculation and clears CRC Done flag. |
+ * | 8 | **STATUS1**, **STATUS0** | Write | Clears status to leave the device in a clean state. |
+ *
+ * The following register operations are performed by this API for **ADEMA12x** devices:
+ *
+ * | Step | Register | Operation | Description |
+ * |------|-----------|------------|-------------|
+ * | 1 | **STATUS0** | Write | Clears the **SPI_CRC_ERR** bit. |
+ * | 2 | **CONFIG0** | Write | Configures stream mode, ADC power mode, and SPI write CRC check. |
+ * | 3 | **DATARATE**, **DATAPATH_CONFIG_LOCK** | Write | Sets the ADC datarate. |
+ * | 4 | **SYNC_SNAP**, **STATUS2** | Write, read | Write **ALIGN**, read **STATUS2** for ADC Sync |
+ * | 5 | **STATUS2** | Read | Verifies if any error bits are set in STATUS2, STATUS1, and STATUS0. |
+ * | 6 | **CONFIG_CRC_MMR** | Write | Forces CRC recalculation and clears CRC Done flag. |
+ * | 7 | **CONFIG_CRC_MMR_RETAINED** | Write | Forces CRC recalculation and clears CRC Done flag. |
+ * | 8 | **STATUS1**, **STATUS0** | Write | Clears status to leave the device in a clean state. |
+ * | 9 | **TDM_CONFIG** | Write | Enables tamper detection. |
+ * | 10 | **TDM_THRSH_MSB**, **STATUS2** | Write, read | Sets the tamper detect threshold. |
  */
 ADI_ADC_STATUS adi_adc_ConfigureAdcs(ADI_ADC_HANDLE hAdc, ADI_ADC_CONFIG_REGISTERS *pConfigReg);
 
@@ -666,7 +698,18 @@ ADI_ADC_STATUS adi_adc_ValidateSamples(ADI_ADC_HANDLE hAdc);
 /**
  * @brief Function to read a block of samples collected by #adi_adc_CollectSamples.
  *        The number of samples that can be collected can be controlled by
- * #ADI_ADC_CONFIG.numSamplesInBlock
+ * #ADI_ADC_CONFIG.numSamplesInBlock. This function should be called after invocation of
+ * #adi_adc_CollectSamples.
+ *
+ * The function behaves as follows:
+ *   - Returns #ADI_ADC_STATUS_NO_DATA if the block of samples is not yet full.
+ *     In this case, no valid data is returned in pBuffer and the caller should
+ *     continue calling #adi_adc_CollectSamples and then retry #adi_adc_ReadBlock
+ *     until the block is ready.
+ *   - Returns #ADI_ADC_STATUS_SUCCESS once the configured number of samples
+ *     (as specified by #ADI_ADC_CONFIG.numSamplesInBlock) has been collected.
+ *     At this point, pBuffer contains valid data for the completed block, and
+ *     pAdcStatusOutput contains the corresponding status information.
  *
  * @param[in] hAdc   - ADC Service handle
  * @param[out] pBuffer          - Pointer to buffer to collect the data.
@@ -816,6 +859,13 @@ ADI_ADC_STATUS adi_adc_GetChanPosInFrame(ADI_ADC_HANDLE hAdc, uint8_t adcIdx, ui
  * @return  #ADI_ADC_STATUS_SUCCESS \n
  * #ADI_ADC_STATUS_INCORRECT_FRAME_FORMAT_SET \n
  * #ADI_ADC_STATUS_NULL_PTR \n
+ *
+ * @note When switching between short and long SPI frame formats,
+ *       the first response after the switch may contain a CRC error.
+ *       This occurs because the ADC responds with a long-mode NOP frame
+ *       (with the CRC error bit set) truncated to the short frame length.
+ *       The SPI host should ignore this initial response and continue
+ *       with subsequent communications in the selected format.
  */
 ADI_ADC_STATUS adi_adc_SetAdcFrameFormat(ADI_ADC_HANDLE hAdc, uint8_t format);
 

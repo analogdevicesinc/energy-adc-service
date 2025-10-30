@@ -72,6 +72,8 @@ typedef enum
 #define APP_CFG_ADC_SPI_RX_DMA_INT_PRIORITY 2
 /** SPI interrupt priority */
 #define APP_CFG_ADC_SPI_INT_PRIORITY 4
+/** Priority value for the USB interrupt */
+#define APP_CFG_USB_FS_INTR_PRIORITY 5
 /** spi mode */
 #define APP_CFG_ADC_SPI_MODE 3
 /** max num adc */
@@ -118,7 +120,7 @@ typedef enum
 /** Enable callback from ADC service */
 #define APP_CFG_ENABLE_ADCS_CALLBACK 1
 /** Quantization noise */
-#define APP_CFG_QUANTIZATION_NOISE 44
+#define APP_CFG_QUANTIZATION_NOISE 0
 /** Enable Datapath */
 #define APP_CFG_ENABLE_DATAPATH 1
 /** Maximum number of voltage channels */

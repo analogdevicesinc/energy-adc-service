@@ -114,7 +114,6 @@ ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAd
     uint8_t numAdc = pAdcBoardConfig->numAdc;
 
     EvbEnableDreadyIrq(0);
-    pInfo->suspendState = 1;
     pInfo->isSpiRunning = 0;
     pAdcIf->overflowError = 0;
     pAdcIf->dreadyError = 0;
@@ -137,7 +136,7 @@ ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAd
         {
             if (status == ADI_ADC_STATUS_SUCCESS)
             {
-                status = adi_adc_EnableClockOut(pInfo->hAdc, idx);
+                status = adi_adc_SetClockOut(pInfo->hAdc, idx);
                 if (status == ADI_ADC_STATUS_SUCCESS)
                 {
                     /* Wait for the ADC to start up. */
@@ -151,7 +150,11 @@ ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAd
         status = AdcIfConfigureAdcs(pInfo);
     }
 
+#ifdef USE_SIMUL_ADC
+    EvbDataRdyStartTimer();
+#else
     EvbEnableDreadyIrq(1);
+#endif
 #if APP_CFG_ENABLE_DATAPATH == 1
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
@@ -161,6 +164,7 @@ ADI_ADC_STATUS AdcIfInitService(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pAd
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         pInfo->blockReady = false;
+        pInfo->responseReady = false;
     }
 
     return status;
@@ -206,22 +210,24 @@ ADI_ADC_STATUS AdcIfStartCapture(ADC_INTERFACE_INFO *pInfo)
     pInfo->isSpiRunning = 0;
     pInfo->enableRun = 1;
     pInfo->dreadyCnt = 0;
-
+    pInfo->resetSamplesBuffer = 1;
     return status;
 }
 
 ADI_ADC_STATUS AdcIfStopCapture(ADC_INTERFACE_INFO *pInfo)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
-
+    volatile int32_t timeout = 0;
+    /* maxWait: Found the time taken for isSpiRunning to change from 1 to 0 using LA */
+    /* for 1x ADEMA127 and converted it into cycles for STM32H573ZI */
+    int32_t maxWait = 1500; // Increased a bit to accomodate for 4x ADEMA127
     pInfo->enableRun = 0;
     /* Wait till previous SPI Tx/Rx is complete */
-    while (pInfo->isSpiRunning == 1)
+    while (pInfo->isSpiRunning == 1 && timeout < maxWait)
     {
-        ;
+        timeout++;
     }
     status = adi_adc_ResetFrameBuffer(pInfo->hAdc);
-
     return status;
 }
 
@@ -317,8 +323,12 @@ ADI_ADC_STATUS PopulateAdcConfig(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pA
     {
         pConfig->numAdc = numAdc;
         pConfig->pAdcType = pAdcType;
-        pConfig->pIntegerSampleDelay = pInfo->integerSampleDelay;
+        pConfig->pIntegerSampleDelay = pAdcBoardConfig->integerSampleDelay;
         pConfig->maxSampleDelay = APP_CFG_MAX_SAMPLE_DELAY;
+        pConfig->frameFormat = pInfo->frameFormat;
+        pConfig->hUser = pInfo;
+        pConfig->numSamplesInBlock = APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE;
+        pConfig->ignoreRxBufferOverflow = APP_CFG_IGNORE_RX_BUFFER_OVERFLOW;
     }
 
     if (status == ADI_ADC_STATUS_SUCCESS)
@@ -333,17 +343,13 @@ ADI_ADC_STATUS PopulateAdcConfig(ADC_INTERFACE_INFO *pInfo, ADC_BOARD_CONFIG *pA
             numAdc, &pConfig->pAdcType[0], &pInfo->configRegisters[0]);
     }
 
-#ifdef ENABLE_SIMULATION
+#if defined(USE_SIMUL_ADC) || defined(ENABLE_SIMULATION)
     /* FIXME: This need to be moved out to InitTestCmd  fuction*/
     EvbConnectAdc(numAdc, &pConfig->pAdcType[0]);
 #endif
 #if APP_CFG_ENABLE_ADCS_CALLBACK == 1
     pConfig->pfCallback = pInfo->pfCallback;
 #endif
-
-    pConfig->hUser = pInfo;
-    pConfig->numSamplesInBlock = APP_CFG_DEFAULT_SAMPLE_BLOCK_SIZE;
-    pConfig->ignoreRxBufferOverflow = APP_CFG_IGNORE_RX_BUFFER_OVERFLOW;
 
     return status;
 }
@@ -662,28 +668,19 @@ ADI_ADC_STATUS AdcIfSetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pV
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int8_t i;
     int8_t slotNum = 0;
-    int8_t adcNum;
 
     // Update the integer sample delay configuration in the ADC Config instance in ADC Interface
     // structure
     for (i = 0; i < numChan; i++)
     {
-        if (adcIdx == -1)
-        {
-            for (adcNum = 0; adcNum < pInfo->adcCfg.numAdc; adcNum++)
-            {
-                status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcNum, pChanIdx[i], &slotNum);
-                pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pValue[i];
-            }
-        }
-        else
-        {
-            status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcIdx, pChanIdx[i], &slotNum);
-            pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pValue[i];
-        }
+        status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcIdx, pChanIdx[i], &slotNum);
+        pInfo->adcCfg.pIntegerSampleDelay[slotNum] = pValue[i];
     }
-    // Set the integer sample delay configuration inside the ADC service
-    status = adi_adc_SetIntegerSampleDelay(pInfo->hAdc, pValue, pChanIdx, numChan, adcIdx);
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Set the integer sample delay configuration inside the ADC service
+        status = adi_adc_SetIntegerSampleDelay(pInfo->hAdc, pValue, pChanIdx, numChan, adcIdx);
+    }
     return status;
 }
 
@@ -693,26 +690,14 @@ ADI_ADC_STATUS AdcIfGetIntegerSampleDelay(ADC_INTERFACE_INFO *pInfo, uint8_t *pC
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     int8_t i;
     int8_t slotNum = 0;
-    int8_t adcNum;
     status = adi_adc_GetConfig(pInfo->hAdc, &pInfo->adcCfg);
 
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         for (i = 0; i < numChan; i++)
         {
-            if (adcIdx == -1)
-            {
-                for (adcNum = 0; adcNum < pInfo->adcCfg.numAdc; adcNum++)
-                {
-                    status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcNum, pChanIdx[i], &slotNum);
-                    pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[slotNum];
-                }
-            }
-            else
-            {
-                status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcIdx, pChanIdx[i], &slotNum);
-                pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[slotNum];
-            }
+            status = adi_adc_GetChanPosInFrame(pInfo->hAdc, adcIdx, pChanIdx[i], &slotNum);
+            pValue[i] = pInfo->adcCfg.pIntegerSampleDelay[slotNum];
         }
     }
     return status;

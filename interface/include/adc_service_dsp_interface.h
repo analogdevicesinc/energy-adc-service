@@ -61,9 +61,9 @@ ADI_ADC_STATUS AdcIfConfigDspLock(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8
  * @param[in]  adcIdx - adc index.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfEnableDatapath(ADC_INTERFACE_INFO *pInfo,
-                                   ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEn, uint8_t *pChanIdx,
-                                   int8_t numChan, int8_t adcIdx);
+ADI_ADC_STATUS AdcIfSetDatapathConfig(ADC_INTERFACE_INFO *pInfo,
+                                      ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEn, uint8_t *pChanIdx,
+                                      int8_t numChan, int8_t adcIdx);
 
 /**
  * @brief Retrieves the datapath configuration for the specified ADC channel.
@@ -408,38 +408,56 @@ ADI_ADC_STATUS AdcIfGetLpfCoeff(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, float 
 /**
  * @brief Sets the ADCCMI (ADC Common Mode Input) value for the specified ADC.
  * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  adcNum - ADC number.
  * @param[in]  cmiValue - Common Mode Input value to be set.
- * @param[in]  adcIdx - ADC index.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfSetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t cmiValue);
+ADI_ADC_STATUS AdcIfSetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t cmiValue);
 
 /**
  * @brief Retrieves the ADCCMI (ADC Common Mode Input) value for the specified ADC.
  * @param[in]  pInfo - pointer to interface info structure.
- * @param[in]  adcIdx - ADC index.
+ * @param[in]  adcNum - ADC number.
  * @param[out] pCmiValue - Pointer to store the retrieved Common Mode Input value.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pCmiValue);
+ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t *pCmiValue);
+
+/**
+ * @brief Sets the ADC GAIN value for the specified ADC.
+ * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  adcNum - ADC number.
+ * @param[in]  gainValue - Gain value to be set.
+ * @return Result of the command
+ */
+ADI_ADC_STATUS AdcIfSetAdcGain(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t gainValue);
+
+/**
+ * @brief Retrieves the ADC GAIN value for the specified ADC.
+ * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  adcNum - ADC number.
+ * @param[out] pGainValue - Pointer to store the retrieved gain value.
+ * @return Result of the command
+ */
+ADI_ADC_STATUS AdcIfGetAdcGain(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t *pGainValue);
 
 /**
  * @brief Sets the ADCINV (ADC Inversion) value for the specified ADC.
  * @param[in]  pInfo - pointer to interface info structure.
+ * @param[in]  adcNum - ADC number.
  * @param[in]  invValue - Inversion value to be set.
- * @param[in]  adcIdx - ADC index.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t invValue);
+ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t invValue);
 
 /**
  * @brief Retrieves the ADCINV (ADC Inversion) value for the specified ADC.
  * @param[in]  pInfo - pointer to interface info structure.
- * @param[in]  adcIdx - ADC index.
+ * @param[in]  adcNum - ADC number.
  * @param[out] pInvValue - Pointer to store the retrieved Inversion value.
  * @return Result of the command
  */
-ADI_ADC_STATUS AdcIfGetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pInvValue);
+ADI_ADC_STATUS AdcIfGetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t *pInvValue);
 
 /**
  * @brief Sets compensation filter coefficients for specified ADC channels.

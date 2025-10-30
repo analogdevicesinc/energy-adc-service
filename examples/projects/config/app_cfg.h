@@ -53,7 +53,7 @@ extern "C" {
 /**
  * Qunatization noise in datapath
  */
-#define APP_CFG_QUANTIZATION_NOISE 44
+#define APP_CFG_QUANTIZATION_NOISE 0
 /** Enable Datapath */
 #define APP_CFG_ENABLE_DATAPATH 1
 /** max num adc */
@@ -65,7 +65,7 @@ extern "C" {
 /** Maximum number of voltage channels */
 #define APP_CFG_MAX_NUM_VOLTAGE_CHANNELS 3
 /** Maximum number of current channels */
-#define APP_CFG_MAX_NUM_CURRENT_CHANNELS 4
+#define APP_CFG_MAX_NUM_CURRENT_CHANNELS 25
 /** max number of channels */
 #define APP_CFG_MAX_NUM_CHANNELS 28
 /** max number of channels per ADC */

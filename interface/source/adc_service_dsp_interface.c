@@ -264,16 +264,16 @@ ADI_ADC_STATUS AdcIfConfigDspLock(ADC_INTERFACE_INFO *pInfo, uint8_t value, int8
     return status;
 }
 
-ADI_ADC_STATUS AdcIfEnableDatapath(ADC_INTERFACE_INFO *pInfo,
-                                   ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEn, uint8_t *pChanIdx,
-                                   int8_t numChan, int8_t adcIdx)
+ADI_ADC_STATUS AdcIfSetDatapathConfig(ADC_INTERFACE_INFO *pInfo,
+                                      ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEn, uint8_t *pChanIdx,
+                                      int8_t numChan, int8_t adcIdx)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
 
     status = AdcIfConfigDspLock(pInfo, 0, adcIdx);
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
-        status = adi_adc_EnableDatapathConfig(pInfo->hAdc, pDatapathEn, pChanIdx, numChan, adcIdx);
+        status = adi_adc_SetDatapathConfig(pInfo->hAdc, pDatapathEn, pChanIdx, numChan, adcIdx);
     }
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
@@ -743,12 +743,10 @@ ADI_ADC_STATUS AdcIfSetDspConfig(ADC_INTERFACE_INFO *pInfo,
 
     if (adcStatus == ADI_ADC_STATUS_SUCCESS)
     {
-        adcStatus = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_CMI,
-                                       pInfo->adcRegParams[adcIdx].cmiReg, (int8_t)adcIdx);
+        adcStatus = AdcIfSetAdcCmi(pInfo, adcIdx, pInfo->adcRegParams[adcIdx].cmiReg);
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
-            adcStatus = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_GAIN,
-                                           pInfo->adcRegParams[adcIdx].gain, (int8_t)adcIdx);
+            adcStatus = AdcIfSetAdcGain(pInfo, adcIdx, pInfo->adcRegParams[adcIdx].gain);
         }
         if (adcStatus == ADI_ADC_STATUS_SUCCESS)
         {
@@ -836,24 +834,66 @@ ADI_ADC_STATUS AdcIfGetPhaseOffset(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanIdx,
     return status;
 }
 
-ADI_ADC_STATUS AdcIfSetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t cmiReg)
+ADI_ADC_STATUS AdcIfSetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t cmiValue)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    uint8_t gainReg = 0;
+    uint8_t invalidConfig = 0;
+    uint32_t numBytesRead = 0;
+    uint8_t numCh = 0;
 
-    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADEMA127)
+    {
+        numCh = 7;
+    }
+    else if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADEMA124)
+    {
+        numCh = 4;
+    }
+    else
     {
         status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
     }
+
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Read current GAIN register value
+        status = AdcIfReadRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_GAIN, adcNum,
+                                   &pInfo->adcRegBuff[0], &numBytesRead);
+        gainReg = pInfo->adcRegBuff[1];
+    }
+
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Check invalid combination: GAIN_CHx=1 and CMI_CHx=1
+        for (uint8_t ch = 0; ch < numCh; ch++)
+        {
+            uint8_t gainBit = (gainReg >> ch) & 0x01;
+            uint8_t cmiBit = (cmiValue >> ch) & 0x01;
+
+            if ((gainBit == 1) && (cmiBit == 1))
+            {
+                invalidConfig = 1;
+                break;
+            }
+        }
+
+        if (invalidConfig)
+        {
+            status = ADI_ADC_STATUS_INVALID_REGISTER_VALUE;
+        }
+    }
+
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         // Write CMI register value
-        status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_CMI, cmiReg, adcIdx);
+        status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_CMI, cmiValue, adcNum);
     }
 
     return status;
 }
 
-ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pCmiReg)
+ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pCmiValue)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint32_t numBytesRead = 0;
@@ -867,20 +907,98 @@ ADI_ADC_STATUS AdcIfGetAdcCmi(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
         // Read CMI register value
         status = AdcIfReadRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_CMI, adcIdx, cmiReg,
                                    &numBytesRead);
-        *pCmiReg = cmiReg[1]; // Extract the register value
+        *pCmiValue = cmiReg[1]; // Extract the register value
     }
     return status;
 }
 
-ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t invReg)
+ADI_ADC_STATUS AdcIfSetAdcGain(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t gainValue)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    uint8_t cmiReg = 0;
+    uint8_t invalidConfig = 0;
+    uint32_t numBytesRead = 0;
+    uint8_t numCh = 0;
+
+    if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADEMA127)
+    {
+        numCh = 7;
+    }
+    else if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADEMA124)
+    {
+        numCh = 4;
+    }
+    else
+    {
+        status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
+    }
+
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Read current CMI register value
+        status = AdcIfReadRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_CMI, adcNum,
+                                   &pInfo->adcRegBuff[0], &numBytesRead);
+        cmiReg = pInfo->adcRegBuff[1];
+    }
+
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Check invalid combination: GAIN_CHx=1 and CMI_CHx=1
+        for (uint8_t ch = 0; ch < numCh; ch++)
+        {
+            uint8_t gainBit = (gainValue >> ch) & 0x01;
+            uint8_t cmiBit = (cmiReg >> ch) & 0x01;
+
+            if ((gainBit == 1) && (cmiBit == 1))
+            {
+                invalidConfig = 1;
+                break;
+            }
+        }
+
+        if (invalidConfig)
+        {
+            status = ADI_ADC_STATUS_INVALID_REGISTER_VALUE;
+        }
+    }
+
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Write valid Gain value to register
+        status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_GAIN, gainValue, adcNum);
+    }
+
+    return status;
+}
+
+ADI_ADC_STATUS AdcIfGetAdcGain(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t *pGainValue)
+{
+    ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
+    uint32_t numBytesRead = 0;
+    uint8_t gainReg[2];
+    if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADE91XX)
+    {
+        status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        // Read GAIN register value
+        status = AdcIfReadRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_GAIN, adcNum, gainReg,
+                                   &numBytesRead);
+        *pGainValue = gainReg[1]; // Extract the register value
+    }
+    return status;
+}
+
+ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t invValue)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint32_t numBytesRead = 0;
     uint8_t invRegVal[2];
 
-    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADE91XX)
     {
-        status = AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcIdx, invRegVal,
+        status = AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcNum, invRegVal,
                                    &numBytesRead);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
@@ -889,55 +1007,56 @@ ADI_ADC_STATUS AdcIfSetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t 
                               BITM_ADE911X_MAP0_CONFIG_FILT_V1_ADC_INVERT |
                               BITM_ADE911X_MAP0_CONFIG_FILT_V2_ADC_INVERT);
             // Set the new invert value
-            invRegVal[1] |= (invReg & 0x07) << BITP_ADE911X_MAP0_CONFIG_FILT_I_ADC_INVERT;
+            invRegVal[1] |= (invValue & 0x07) << BITP_ADE911X_MAP0_CONFIG_FILT_I_ADC_INVERT;
 
             // Write the updated register value
-            status = AdcIfWriteRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, invRegVal[1], adcIdx);
+            status = AdcIfWriteRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, invRegVal[1], adcNum);
         }
     }
-    else if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADEMA127)
+    else if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADEMA127)
     {
         // For ADEMA127, write the ADC Invert register value
-        status =
-            AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_INV, (invReg & 0x7F), adcIdx);
+        status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_INV, (invValue & 0x7F),
+                                    adcNum);
     }
     else
     {
         // For ADEMA124, write the ADC Invert register value
-        status =
-            AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_INV, (invReg & 0x0F), adcIdx);
+        status = AdcIfWriteRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_INV, (invValue & 0x0F),
+                                    adcNum);
     }
 
     return status;
 }
 
-ADI_ADC_STATUS AdcIfGetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcIdx, uint8_t *pInvReg)
+ADI_ADC_STATUS AdcIfGetAdcInv(ADC_INTERFACE_INFO *pInfo, int8_t adcNum, uint8_t *pInvValue)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint32_t numBytesRead = 0;
     uint8_t invReg[2];
 
-    if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+    if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADE91XX)
     {
         status =
-            AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcIdx, invReg, &numBytesRead);
+            AdcIfReadRegister(pInfo, ADDR_ADE911X_MAP0_CONFIG_FILT, adcNum, invReg, &numBytesRead);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            *pInvReg = (invReg[1] >> BITP_ADE911X_MAP0_CONFIG_FILT_I_ADC_INVERT) & 0x07;
+            *pInvValue = (invReg[1] >> BITP_ADE911X_MAP0_CONFIG_FILT_I_ADC_INVERT) & 0x07;
         }
     }
     else
     {
-        status = AdcIfReadRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_INV, adcIdx, invReg,
+        status = AdcIfReadRegister(pInfo, ADDR_ADEMA127_MMR_RETAINED_ADC_INV, adcNum, invReg,
                                    &numBytesRead);
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
-            *pInvReg = invReg[1]; // Extract the register value
+            *pInvValue = invReg[1]; // Extract the register value
         }
     }
 
     return status;
 }
+
 ADI_ADC_STATUS AdcIfGetCompCoeff(ADC_INTERFACE_INFO *pInfo, uint8_t *pChanIdx, uint8_t numChan,
                                  int8_t adcIdx, float *pCoeffs[])
 {

@@ -206,7 +206,7 @@ ADI_ADC_STATUS AdcSetChannelOffset(ADI_ADC_INFO *pInfo, int32_t *pOffsetVal, uin
                 break;
             }
             addr = baseAddr + (pChanIdx[i] * addrStep);
-            // Write ADC Channel Gain value
+            // Write ADC Channel Offset value
             valFix = (pOffsetVal[i]);
             valLo = valFix & 0xFF;
             valMd = (valFix & 0xFF00) >> 8;
@@ -545,31 +545,17 @@ ADI_ADC_STATUS AdcWriteHpfDenCoeffs(ADI_ADC_INFO *pInfo, uint16_t address, doubl
     uint64_t valFix;
     uint8_t val0, val1, val2, val3, val4, val5;
     valFix = (uint64_t)(value * ((int64_t)1 << ADEMA12x_HPF_DEN_FRAC_BITS));
-    val3 = (valFix >> 8) & 0xFF;
-    val4 = (valFix >> 16) & 0xFF;
-    val5 = (valFix >> 24) & 0xFF;
-    val0 = 0;
-    val1 = 0;
-    val2 = valFix & 0xFF;
-
-    /* Write upper 24 bits value in the given ADC register address */
-    status = AdcWriteRegister(pInfo, address, val3, adcIdx);
-
-    if (status == ADI_ADC_STATUS_SUCCESS)
-    {
-        status = AdcWriteRegister(pInfo, address + 1, val4, adcIdx);
-    }
-    if (status == ADI_ADC_STATUS_SUCCESS)
-    {
-        status = AdcWriteRegister(pInfo, address + 2, val5, adcIdx);
-    }
+    /* Split into 6 bytes, LSB*/
+    val0 = (uint8_t)(valFix >> 0);
+    val1 = (uint8_t)(valFix >> 8);
+    val2 = (uint8_t)(valFix >> 16);
+    val3 = (uint8_t)(valFix >> 24);
+    val4 = (uint8_t)(valFix >> 32);
+    val5 = (uint8_t)(valFix >> 40);
 
     /* Write lower 24 bits value in the given ADC register address */
-    address += 4;
-    if (status == ADI_ADC_STATUS_SUCCESS)
-    {
-        status = AdcWriteRegister(pInfo, address, val0, adcIdx);
-    }
+    status = AdcWriteRegister(pInfo, address, val0, adcIdx);
+
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         status = AdcWriteRegister(pInfo, address + 1, val1, adcIdx);
@@ -577,6 +563,20 @@ ADI_ADC_STATUS AdcWriteHpfDenCoeffs(ADI_ADC_INFO *pInfo, uint16_t address, doubl
     if (status == ADI_ADC_STATUS_SUCCESS)
     {
         status = AdcWriteRegister(pInfo, address + 2, val2, adcIdx);
+    }
+
+    /* Write upper 24 bits value in the given ADC register address */
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcWriteRegister(pInfo, address + 4, val3, adcIdx);
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcWriteRegister(pInfo, address + 5, val4, adcIdx);
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcWriteRegister(pInfo, address + 6, val5, adcIdx);
     }
 
     return status;
@@ -949,25 +949,43 @@ ADI_ADC_STATUS AdcReadHpfDenCoeffs(ADI_ADC_INFO *pInfo, uint16_t address, int8_t
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
     uint64_t valFix = 0;
     uint8_t *pReadVal = &pInfo->datapathReadVal.readVal[0];
-    uint8_t val2, val3, val4, val5;
+    uint8_t val0 = 0, val1 = 0, val2 = 0, val3 = 0, val4 = 0, val5 = 0;
     uint32_t numBytes;
 
-    /* Read upper 24 bits value from the given ADC register address */
-    status = AdcReadRegister(pInfo, address, adcIdx, &pReadVal[0], &numBytes);
-    val3 = pReadVal[1];
-    status = AdcReadRegister(pInfo, address + 1, adcIdx, &pReadVal[0], &numBytes);
-    val4 = pReadVal[1];
-    status = AdcReadRegister(pInfo, address + 2, adcIdx, &pReadVal[0], &numBytes);
-    val5 = pReadVal[1];
-
     /* Read lower 24 bits value from the given ADC register address */
-    address += 4;
-    status = AdcReadRegister(pInfo, address + 2, adcIdx, &pReadVal[0], &numBytes);
-    val2 = pReadVal[1];
+    status = AdcReadRegister(pInfo, address, adcIdx, &pReadVal[0], &numBytes);
+    val0 = pReadVal[1];
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcReadRegister(pInfo, address + 1, adcIdx, &pReadVal[0], &numBytes);
+        val1 = pReadVal[1];
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcReadRegister(pInfo, address + 2, adcIdx, &pReadVal[0], &numBytes);
+        val2 = pReadVal[1];
+    }
+
+    /* Read upper 24 bits value from the given ADC register address */
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcReadRegister(pInfo, address + 4, adcIdx, &pReadVal[0], &numBytes);
+        val3 = pReadVal[1];
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcReadRegister(pInfo, address + 5, adcIdx, &pReadVal[0], &numBytes);
+        val4 = pReadVal[1];
+    }
+    if (status == ADI_ADC_STATUS_SUCCESS)
+    {
+        status = AdcReadRegister(pInfo, address + 6, adcIdx, &pReadVal[0], &numBytes);
+        val5 = pReadVal[1];
+    }
 
     /* Reconstruct the fixed-point value */
-    valFix =
-        ((uint64_t)val3 << 8) | ((uint64_t)val4 << 16) | ((uint64_t)val5 << 24) | ((uint64_t)val2);
+    valFix = ((uint64_t)val0) | ((uint64_t)val1 << 8) | ((uint64_t)val2 << 16) |
+             ((uint64_t)val3 << 24) | ((uint64_t)val4 << 32) | ((uint64_t)val5 << 40);
 
     /* Convert back to double */
     *pValue = (double)((int64_t)valFix) / ((int64_t)1 << ADEMA12x_HPF_DEN_FRAC_BITS);

@@ -143,6 +143,10 @@ int32_t CmdRead(Args *pArgs)
     char *pParam = &commandParam[0];
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
     ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
+    // FIX ME: CmdThread runs into task errors without this workaround
+#if USE_FREERTOS == 1
+    AdcIfStopCapture(pExample->pAdcIf);
+#endif
     if (pArgs->c >= 1 && pArgs->c <= 4)
     {
         buffer[0] = '\0';
@@ -210,6 +214,9 @@ int32_t CmdRead(Args *pArgs)
     {
         status = -1;
     }
+#if USE_FREERTOS == 1
+    AdcIfStartCapture(pExample->pAdcIf);
+#endif
     return status;
 }
 
@@ -224,6 +231,10 @@ int32_t CmdWrite(Args *pArgs)
     char attr[20];
     uint8_t valueSize;
     char *pParam = &commandParam[0];
+    ADC_EXAMPLE *pExample = GetAdcExampleInfo();
+#if USE_FREERTOS == 1
+    AdcIfStopCapture(pExample->pAdcIf);
+#endif
     if (pArgs->c >= 2 && pArgs->c <= 5)
     {
         numChoices = sizeof(deviceTypes) / sizeof(deviceTypes[0]);
@@ -304,6 +315,9 @@ int32_t CmdWrite(Args *pArgs)
     {
         status = -1;
     }
+#if USE_FREERTOS == 1
+    AdcIfStartCapture(pExample->pAdcIf);
+#endif
     return status;
 }
 
@@ -352,6 +366,7 @@ int32_t CmdReadBuf(Args *pArgs)
     int32_t choice;
     int32_t numBytes;
     int32_t length;
+    int32_t result;
     char *pParam = &commandParam[0];
     ADC_EXAMPLE *pExample = GetAdcExampleInfo();
     if (pArgs->c == 2)
@@ -360,16 +375,20 @@ int32_t CmdReadBuf(Args *pArgs)
         choice = GetChoice(deviceTypes, pArgs->v[0].pS, numChoices, pParam);
         if (choice == 0)
         {
-            sscanf(pArgs->v[1].pS, "%" PRIi32, &numBytes);
-            sprintf(buffer, "%" PRIi32, numBytes);
-            length = strlen(buffer);
-            buffer[length] = '\n';
-            EvbHostUartTransmitAsync(&uartInfo, (uint8_t *)buffer, length + 1);
-            snprintf(buffer, 10, "%08" PRIx32, pExample->channelMask);
-            length = strlen(buffer);
-            buffer[length] = '\n';
-            EvbHostUartTransmitAsync(&uartInfo, (uint8_t *)buffer, length + 1);
-            IioSubmitBuffer(numBytes);
+            result = sscanf(pArgs->v[1].pS, "%" PRIi32, &numBytes);
+            if (result == 1)
+            {
+                length = sprintf(buffer, "%" PRIi32, numBytes);
+                buffer[length++] = '\n';
+                length += sprintf(buffer + length, "%08" PRIx32, pExample->channelMask);
+                buffer[length++] = '\n';
+                EvbHostCommTransmitAsync(&uartInfo, (uint8_t *)buffer, length);
+                IioSubmitBuffer(numBytes);
+            }
+            else
+            {
+                status = -1;
+            }
         }
     }
     else

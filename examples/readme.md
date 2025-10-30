@@ -4,7 +4,7 @@ The example provided demonstrates how ADC samples can be collected using ADC ser
 
 ## Hardware Setup and Connections
 
-Connect the [EVAL-ADEMA127 Product Page](https://www.analog.com/en/resources/evaluation-hardware-and-software/evaluation-boards-kits/eval-adema127.html#eb-overview)
+Connect the [EVAL-ADEMA127](https://www.analog.com/en/resources/evaluation-hardware-and-software/evaluation-boards-kits/eval-adema127.html#eb-overview)
 
 ## Static Configuration
 
@@ -12,7 +12,7 @@ Example includes headers [app_cfg.h](projects/config/app_cfg.h) and [adc_datapat
 
 ## Building, Running, and Debugging Examples
 
-- [`CMakeLists.txt`](projects/CMakeLists.txt) is provided to build f the example project
+- [`CMakeLists.txt`](projects/CMakeLists.txt) is provided to build the example project
 - A [VS Code workspace](projects/sample_read_example.code-workspace) is also given as part of the example.
 - See the [board support readme](https://github.com/analogdevicesinc/energy-board-support/blob/main/stm/app_mcu_h5/readme.md) for instructions on building, running, and debugging the example.
 
@@ -30,3 +30,9 @@ The following functions from the [board_support repo](https://github.com/analogd
 
 The sample read example project shows how to call various APIs and interface functions of the ADC Service. The firmware initializes the ADC service, configures the ADCs, collect the samples and send it over UART.
 
+## Building for different ADC Configuration
+
+By default, the project builds for a single ADEMA127 device configuration.
+To build for a different ADC configuration, use one of the following CMake options:
+- -DBOARD_TYPE_BCM_ADEMA127=ON — for four ADEMA127 based board
+- -DBOARD_TYPE_BCM_ADE9113_ADEMA127=ON — for ADE9113 + ADEMA127 combined board

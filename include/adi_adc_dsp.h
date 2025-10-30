@@ -185,9 +185,9 @@ typedef struct
  * #ADI_ADC_STATUS_CRC_ERROR \n
  * #ADI_ADC_STATUS_DATAPATH_CONFIGURATION_FAILED \n
  */
-ADI_ADC_STATUS adi_adc_EnableDatapathConfig(ADI_ADC_HANDLE hAdc,
-                                            ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEnConfig,
-                                            uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx);
+ADI_ADC_STATUS adi_adc_SetDatapathConfig(ADI_ADC_HANDLE hAdc,
+                                         ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEnConfig,
+                                         uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx);
 
 /**
  * @brief Function to set the channel based ADC DSP registers. Writes are dones to the registers

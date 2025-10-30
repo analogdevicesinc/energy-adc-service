@@ -119,7 +119,8 @@ typedef struct
     ADI_ADC_TYPE adcType[APP_CFG_MAX_NUM_ADC];
     /** ADC inversion bit */
     uint8_t adcInv[APP_CFG_MAX_NUM_ADC];
-
+    /** Integer sample delay requested by user. */
+    uint8_t integerSampleDelay[APP_CFG_MAX_NUM_CHANNELS];
 } ADC_BOARD_CONFIG;
 
 /**
@@ -156,9 +157,8 @@ typedef struct
     ADI_ADC_CONFIG_REGISTERS configRegisters[APP_CFG_MAX_NUM_ADC];
     /** flag to indicate that the block is ready */
     volatile bool blockReady;
-
-    /** suspend state */
-    volatile uint8_t suspendState;
+    /** flag to indicate that the response is ready */
+    volatile bool responseReady;
     /** Channel index */
     uint8_t channelIdx[APP_CFG_MAX_NUM_CHANNELS];
     /** ADC register params */
@@ -175,9 +175,6 @@ typedef struct
     uint8_t regCmiVal[APP_CFG_MAX_NUM_ADC];
     /** Flag set when DREADY interrupt occurs */
     volatile uint8_t dreadyFlag;
-
-    /** Integer sample delay requested by user. */
-    uint8_t integerSampleDelay[APP_CFG_MAX_NUM_CHANNELS];
     /** Function Pointer to ADC events. */
     ADI_ADC_CALLBACK_FUNC pfCallback;
 #if (APP_CFG_USE_TIMESTAMP == 1)
@@ -188,6 +185,13 @@ typedef struct
     uint32_t adcStateMemory[ADI_ADC_STATE_MEM_NUM_BYTES_4XADEMA127_4XBLOCKSIZE / 4];
     /** Flag set when DSP LOCK occurs */
     uint8_t dspLockFlag;
+    /** Flag to reset example samples buffer writeIndex */
+    bool resetSamplesBuffer;
+    /** Flag to indicate that collect samples has started */
+    volatile bool isCollectSamplesStarted;
+    /** Frame format */
+    ADI_ADC_FRAME_FORMAT frameFormat;
+
 } ADC_INTERFACE_INFO;
 
 /** @} */

@@ -100,9 +100,9 @@ typedef struct
     /** Index of next frame to write */
     int32_t writeIdx;
     /** Index of earliest frame. */
-    int32_t frameReadIdx;
+    uint32_t frameReadIdx;
     /** Index of next frame to write */
-    int32_t frameWriteIdx;
+    uint32_t frameWriteIdx;
     /** Type of ADC command that is sent to the ADCs. */
     /** Frame buffer. Few blocks are kept extra. */
     uint8_t *pAdcRxFrames;
@@ -114,6 +114,8 @@ typedef struct
     /** Timestamp buffer */
     uint32_t *pTimestamp;
 #endif
+    /** Number of frames filled and available to read*/
+    int32_t numAvailableFrames;
 } ADI_ADC_RX_BUFFER;
 
 /** Address and value for configuration register */
@@ -606,13 +608,13 @@ ADI_ADC_STATUS AdcSetIntegerSampleDelay(ADI_ADC_INFO *pInfo, uint8_t *pIntegerDe
  * are within the allowed range for the ADC.
  *
  * @param[in] pInfo     Pointer to the ADC service info structure.
- * @param[in] adcIdx    Index of the ADC to validate.
+ * @param[in] adcNum    Index of the ADC to validate.
  * @param[in] pChanIdx  Pointer to the array of channel indices to validate.
  * @param[in] numChan   Number of channels to validate.
  *
  * @return ADI_ADC_STATUS_SUCCESS if all channels are valid, otherwise appropriate error code.
  */
-ADI_ADC_STATUS CheckChannelValid(ADI_ADC_INFO *pInfo, int8_t adcIdx, uint8_t *pChanIdx,
+ADI_ADC_STATUS CheckChannelValid(ADI_ADC_INFO *pInfo, int8_t adcNum, uint8_t *pChanIdx,
                                  int8_t numChan);
 
 /**

@@ -126,7 +126,7 @@ ADI_ADC_STATUS adi_adc_GetConfig(ADI_ADC_HANDLE hAdc, ADI_ADC_CONFIG *pConfig)
     return adcStatus;
 }
 
-ADI_ADC_STATUS adi_adc_EnableClockOut(ADI_ADC_HANDLE hAdc, uint8_t adcIdx)
+ADI_ADC_STATUS adi_adc_SetClockOut(ADI_ADC_HANDLE hAdc, uint8_t adcIdx)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     ADI_ADC_INFO *pInfo = (ADI_ADC_INFO *)hAdc;
@@ -222,8 +222,10 @@ ADI_ADC_STATUS AdcResetStates(ADI_ADC_INFO *pInfo)
     pRxBuffer->writeIdx = 0;
     pRxBuffer->frameReadIdx = 0;
     pRxBuffer->frameWriteIdx = 0;
+    pRxBuffer->numAvailableFrames = 0;
     pInfo->runData.currentState = ADI_ADC_RUN_STATE_READY;
     pInfo->cmdStatus = ADI_ADC_READ_WRITE_CMD_STATUS_IDLE;
+
     ADI_ADC_DELAY_BUFFER *pChBuf;
 
     // Clear the read and write indices of delay buffers

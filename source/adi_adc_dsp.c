@@ -34,12 +34,12 @@ static uint32_t hpfCoeff[14][7] = {
 
 static void StoreDatapathScfEnable(ADI_ADC_INFO *pInfo,
                                    ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEnConfig,
-                                   uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx);
-static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcIdx);
+                                   uint8_t *pChanIdx, int8_t numChan, int8_t adcNum);
+static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcNum);
 
-ADI_ADC_STATUS adi_adc_EnableDatapathConfig(ADI_ADC_HANDLE hAdc,
-                                            ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEnConfig,
-                                            uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx)
+ADI_ADC_STATUS adi_adc_SetDatapathConfig(ADI_ADC_HANDLE hAdc,
+                                         ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEnConfig,
+                                         uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
     ADI_ADC_INFO *pInfo;
@@ -170,8 +170,8 @@ ADI_ADC_STATUS adi_adc_SetDatapathParams(ADI_ADC_HANDLE hAdc,
             adcStatus = adi_adc_SetDatapathAlpha(pInfo, (uint8_t *)&pDspRegisters->alpha, adcIdx);
             if (adcStatus == ADI_ADC_STATUS_SUCCESS)
             {
-                adcStatus = adi_adc_EnableDatapathConfig(pInfo, &pDspRegisters->pDataPathConfig[0],
-                                                         pChanIdx, numChannel, adcIdx);
+                adcStatus = adi_adc_SetDatapathConfig(pInfo, &pDspRegisters->pDataPathConfig[0],
+                                                      pChanIdx, numChannel, adcIdx);
                 if (adcStatus == ADI_ADC_STATUS_SUCCESS)
                 {
                     adcStatus = adi_adc_SetChannelPhaseOffset(
@@ -838,26 +838,15 @@ ADI_ADC_STATUS adi_adc_GetScfCoeff(ADI_ADC_HANDLE hAdc, uint8_t *pChanIdx, uint8
     return adcStatus;
 }
 
-static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcIdx)
+static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcNum)
 {
     ADI_ADC_STATUS status = ADI_ADC_STATUS_SUCCESS;
 
     if (pInfo->adcCfg.numAdc > 0)
     {
-        if (adcIdx == -1)
+        if (adcNum >= 0 && adcNum < pInfo->adcCfg.numAdc)
         {
-            for (int i = 0; i < pInfo->adcCfg.numAdc; i++)
-            {
-                if (pInfo->adcCfg.pAdcType[i] == ADI_ADC_TYPE_ADE91XX)
-                {
-                    status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
-                    break;
-                }
-            }
-        }
-        else if (adcIdx >= 0 && adcIdx < pInfo->adcCfg.numAdc)
-        {
-            if (pInfo->adcCfg.pAdcType[adcIdx] == ADI_ADC_TYPE_ADE91XX)
+            if (pInfo->adcCfg.pAdcType[adcNum] == ADI_ADC_TYPE_ADE91XX)
             {
                 status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
             }
@@ -873,29 +862,15 @@ static ADI_ADC_STATUS CheckAdcTypeValid(ADI_ADC_INFO *pInfo, int8_t adcIdx)
 
 static void StoreDatapathScfEnable(ADI_ADC_INFO *pInfo,
                                    ADI_ADC_CHAN_DATAPATH_CONFIG *pDatapathEnConfig,
-                                   uint8_t *pChanIdx, int8_t numChan, int8_t adcIdx)
+                                   uint8_t *pChanIdx, int8_t numChan, int8_t adcNum)
 {
-    int8_t i, chan;
+    int8_t chan;
     uint32_t idx;
 
-    if (adcIdx == -1)
+    for (chan = 0; chan < numChan; chan++)
     {
-        for (i = 0; i < pInfo->adcCfg.numAdc; i++)
-        {
-            for (chan = 0; chan < numChan; chan++)
-            {
-                idx = (i * pInfo->maxNumChannel) + pChanIdx[chan];
-                pInfo->pDatapathScfEn[idx] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
-            }
-        }
-    }
-    else
-    {
-        for (chan = 0; chan < numChan; chan++)
-        {
-            idx = (adcIdx * pInfo->maxNumChannel) + pChanIdx[chan];
-            pInfo->pDatapathScfEn[idx] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
-        }
+        idx = (adcNum * pInfo->maxNumChannel) + pChanIdx[chan];
+        pInfo->pDatapathScfEn[idx] = pDatapathEnConfig[pChanIdx[chan]].scfEn;
     }
 }
 

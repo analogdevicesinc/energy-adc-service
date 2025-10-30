@@ -50,7 +50,7 @@
 
     The ADCs should be configured before accessing data from it.
 
-    - #adi_adc_EnableClockOut \n
+    - #adi_adc_SetClockOut \n
     This API configures the first ADC to provide clock to other ADCs in a daisy chain configuration. \n
 
     - #adi_adc_ConfigureAdcs \n
@@ -72,7 +72,7 @@
       // Wait for #ADI_ADC_STARTUP_TIME_MS for the first ADC to become functional.
 
       // Enable the first ADC to provide clock out to the other ADCs
-      adi_adc_EnableClockOut()
+      adi_adc_SetClockOut()
 
       // Wait for #ADI_ADC_STARTUP_TIME_MS for the ADCs to become functional.
 

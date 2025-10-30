@@ -24,7 +24,10 @@
 			"name": "adc_service_sources",
 			"path": "../../source"
 		},
-
+		{
+			"name": "adc_simul",
+			"path": "../../board_support/adc_model"
+		},
 		{
 			"name": "crc",
 			"path": "../../ade_registers/crc"
@@ -62,7 +65,7 @@
 			"**/**.html": true,
 			"**/**.chm": true,
 			"**/stm32h563zi": true,
-			"**/stm32h573zi_freertos": true,
+			"**/stm32h7**": true,
 			"**/stm32h735ig": true,
 			"**/vscode": true,
 			"adc_example_freertos_config.c": true,
@@ -72,13 +75,14 @@
 			"frame_format_example.c": true,
 			"main_freertos.c": true,
 			"**/adi_prof_cfg.h": true,
-			"**/h7_mcu_board": true,
+			"**/app_mcu_h7*": true,
 			"adc_example_freertos.h": true,
 			"adc_example_ucomm.h": true,
 			"adc_example_freertos_config.h": true,
 			"**/freertos": true,
 			"**app_mcu*.code-workspace": true,
 			"**nucleo_*.code-workspace": true,
+			"**python": true,
 		},
 		"stm32Device": "STM32H573",
 		"mcuName": "STM32H563ZITx",

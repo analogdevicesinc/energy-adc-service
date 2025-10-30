@@ -18,7 +18,6 @@ option(USE_IIO "Compile option to use CLI Service" ON)
 option(USE_CRC "Compile CRC sources" ON)
 option(USE_HW_CRC "HW Crc Support" ON)
 
-
 # Build options
 set(EVB "app_mcu_h5" CACHE STRING "Name of evaluation board")
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
@@ -27,19 +26,29 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
 # Toolchain & Project Setup
 # ------------------------------------------------------------------------------
 include(${BOARD_SUPPORT_DIR}/cmake/toolchain_wrapper.cmake)
+copy_vscode_settings(${EVB})
 project(${CMAKE_PROJECT_NAME})
 
 # ------------------------------------------------------------------------------
 # Source Files
 # ------------------------------------------------------------------------------
+
+if(USE_FREERTOS)
+    set(MAIN_SRC ${PROJECT_ROOT_DIR}/eval_firmware/source/main_freertos.c
+                 ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_freertos_config.c
+                 ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_freertos.c)
+else()
+    set(MAIN_SRC ${PROJECT_ROOT_DIR}/eval_firmware/source/main.c
+                 ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_no_os_config.c)
+endif()
+
 set(APP_SRC ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_iio.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_tdm.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_attributes.c
                ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_cli_commands.c
-               ${PROJECT_ROOT_DIR}/eval_firmware/source/main.c
-               ${PROJECT_ROOT_DIR}/eval_firmware/source/adc_example_no_os_config.c
                ${ADE_REGISTERS_DIR}/crc/source/ade_crc.c
                ${PROJECT_ROOT_DIR}/interface/source/adc_service_dsp_interface.c
+               ${MAIN_SRC}
                )
 
 
@@ -72,8 +81,6 @@ add_subdirectory(${FW_SERVICES_DIR} ${CMAKE_BINARY_DIR}/firmware_services)
 add_subdirectory(${ADCS_LIB_DIR} ${CMAKE_BINARY_DIR}/adc_service)
 target_include_directories(adc_service PRIVATE ${CONFIG_DIR})
 
-
-
 # ------------------------------------------------------------------------------
 # Executable Target Setup
 # ------------------------------------------------------------------------------
@@ -81,6 +88,17 @@ add_executable(${CMAKE_PROJECT_NAME})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${APP_SRC} ${ADCSIF_SRC})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${APP_INCLUDES})
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE firmware_services adc_service board_support)
+# Add project symbols (macros)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:DEBUG>
+    USE_CRC
+)
+if(USE_SIMUL_ADC)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE USE_SIMUL_ADC)
+endif()
+if(USE_FREERTOS)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE USE_FREERTOS=1)
+endif()
 
 # ------------------------------------------------------------------------------
 # Post-build: Generate HEX file

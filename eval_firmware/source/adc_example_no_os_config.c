@@ -68,7 +68,7 @@ ADI_ADC_STATUS AdcExmAdcCallback(void *hUser, uint32_t adcEvent)
     {
         if ((adcEvent & ADI_ADC_EVENT_BITM_RESPONSE_READY) != 0)
         {
-            pAdcIf->suspendState = 0;
+            pAdcIf->responseReady = true;
         }
         if ((adcEvent & ADI_ADC_EVENT_BITM_BLOCK_READY) != 0)
         {
@@ -88,11 +88,11 @@ ADI_ADC_STATUS AdcIfWaitAdcResponse(ADC_INTERFACE_INFO *pInfo)
     uint32_t waitCount = 0;
     if (pInfo != NULL)
     {
-        while ((pInfo->suspendState == 1) && (waitCount < APP_CFG_TIMEOUT_COUNT))
+        while ((pInfo->responseReady == false) && (waitCount < APP_CFG_TIMEOUT_COUNT))
         {
             waitCount++;
         }
-        pInfo->suspendState = 1;
+        pInfo->responseReady = false;
         if (waitCount == APP_CFG_TIMEOUT_COUNT)
         {
             adcStatus = ADI_ADC_STATUS_TRANSCEIVE_FAILED;
@@ -130,10 +130,8 @@ ADI_ADC_STATUS AdcExmCollectSamples(ADC_INTERFACE_INFO *pInfo, uint32_t channelM
 
     do
     {
-        pAdcSamples = &pInfo->adcSamples[0];
         /* Read one block of data from the ADC buffers if it is available */
         status = adi_adc_ReadBlock(pInfo->hAdc, pAdcSamples, pAdcStatusOutput);
-
         /* The output buffer will contain interleaved samples of all channels from all ADCs*/
         if (status == ADI_ADC_STATUS_SUCCESS)
         {
@@ -147,7 +145,7 @@ ADI_ADC_STATUS AdcExmCollectSamples(ADC_INTERFACE_INFO *pInfo, uint32_t channelM
             waitCount++;
             if (waitCount > APP_CFG_TIMEOUT_COUNT)
             {
-                /* Update the stats to know why we are timing out*/
+                /* Update the stats to know why we are timing out */
                 adi_adc_GetRunData(pInfo->hAdc, &pInfo->runInfo);
                 break;
             }

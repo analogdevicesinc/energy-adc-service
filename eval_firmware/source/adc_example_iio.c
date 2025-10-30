@@ -85,7 +85,7 @@ static uint8_t vSlots[3] = {2, 6, 3};
 static uint8_t iSlots[4] = {0, 1, 4, 5};
 /*============= F U N C T I O N S =============*/
 
-static void HostUartRxCallback(void);
+static void HostUartRxCallback(uint8_t *pData, uint32_t numBytes);
 static void HostUartTxCallback(void);
 static int32_t CliReceiveAsync(void *pInfo, char *pData, uint32_t numBytes);
 static int32_t CliTransmitAsync(void *pInfo, uint8_t *pData, uint32_t numBytes);
@@ -132,7 +132,6 @@ ADC_EXAMPLE_STATUS InitServices(void)
     pExample->pXmlDescBuffer = &xmlDescBuffer[0];
     pExample->pXmlSize = &xmlSize[0];
     ADC_INTERFACE_INFO *pAdcIf = pExample->pAdcIf;
-    pExampleAttrInfo->adcVariant = ADI_ADC_TYPE_ADEMA127;
     PopulateExamplePointers(pExample);
     InitCircBuff();
     for (i = 0; i < sizeof(vSlots) / sizeof(vSlots[0]); i++)
@@ -166,9 +165,8 @@ ADC_EXAMPLE_STATUS InitServices(void)
             status = ADC_EXAMPLE_STATUS_CLI_INIT_FAILED;
         }
         pCmdInfo = GetHandleForDispatchCommands(pExample->pCliInfo->hCli);
-        pArgs->c = 2;
+        pArgs->c = 1;
         pArgs->v[0].pS = "off";
-        pArgs->v[1].pS = "off";
         CliCmdEcho(pCmdInfo, dispatchTable, pArgs, NUM_COMMANDS);
         if (InitIio())
         {
@@ -189,6 +187,7 @@ ADC_EXAMPLE_STATUS InitServices(void)
         {
             PopulateBoardConfig(&pExample->adcBoardConfig);
             pExample->pAdcIf->pfCallback = AdcExmAdcCallback;
+            EvbStartTimer();
             adcStatus = AdcIfInitService(pExample->pAdcIf, &pExample->adcBoardConfig);
             if (adcStatus != ADI_ADC_STATUS_SUCCESS)
             {
@@ -216,7 +215,6 @@ ADC_EXAMPLE_STATUS InitServices(void)
             status = ADC_EXAMPLE_STATUS_ADC_INIT_FAILED;
         }
     }
-
     return status;
 }
 
@@ -231,10 +229,11 @@ void PopulateExamplePointers(ADC_EXAMPLE *pExample)
     pExampleAttrInfo->chanConfig = 0xFFFFFFF;
     pEvbConfig->spiConfig.pfAdeSpiRxCallback = AdcSpiRxCallback;
     pEvbConfig->gpioConfig.pfGpioCallback = AdcDreadyCallback;
-    pEvbConfig->uartConfig.pfHostUartRxCallback = HostUartRxCallback;
-    pEvbConfig->uartConfig.pfHostUartTxCallback = HostUartTxCallback;
+    pEvbConfig->hostCommConfig.pfRxCallback = HostUartRxCallback;
+    pEvbConfig->hostCommConfig.pfTxCallback = HostUartTxCallback;
     pExample->pCliInfo->config.pfTransmitAsync = CliTransmitAsync;
     pExample->pCliInfo->config.pfReceiveAsync = CliReceiveAsync;
+    pExample->pCliInfo->config.disableDisplayCtrlChars = true;
 }
 
 int32_t InitIio(void)
@@ -263,12 +262,58 @@ void PrintIIoInfo(void)
     sprintf(pExample->pXmlSize, "%" PRIi32, pIioDescBuffer->xmlSize);
     length = strlen(pExample->pXmlSize);
     pExample->pXmlSize[length] = '\n';
-    EvbHostUartTransmitAsync(&uartInfo, (uint8_t *)&pExample->pXmlSize[0], length + 1);
+    EvbHostCommTransmitAsync(&uartInfo, (uint8_t *)&pExample->pXmlSize[0], length + 1);
     pIioDescBuffer->pXmlDesc[pIioDescBuffer->xmlSize] = '\n';
-    EvbHostUartTransmitAsync(&uartInfo, (uint8_t *)pIioDescBuffer->pXmlDesc,
+    EvbHostCommTransmitAsync(&uartInfo, (uint8_t *)pIioDescBuffer->pXmlDesc,
                              pIioDescBuffer->xmlSize + 1);
 }
+#if USE_FREERTOS == 1
+int32_t IioSubmitBuffer(int32_t numBytes)
+{
+    ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
+    // no of samples to collect from all channels
+    uint32_t numSamplesRequired = numBytes / APP_CFG_BYTES_PER_SAMPLE;
+    uint32_t samplesCopied = 0;
+    uint32_t numSamplesSent = 0;
+    ADC_EXAMPLE *pExample = &adcExample;
+    ADC_EXAMPLE_ATTR_INFO *pExampleAttrInfo = &pExample->adcExampleAttrInfo;
+    ADC_INTERFACE_INFO *pAdcIf = pExample->pAdcIf;
+    uint8_t numSamplesInBlock = pAdcIf->adcCfg.numSamplesInBlock;
+    uint32_t numSamplesPerIteration = numSamplesInBlock * pAdcIf->runInfo.totalChannels;
+    int32_t *pBlockBuffer = &pExample->blockBuffer[0];
+    int32_t txComplete;
+    int32_t samplesRemaining;
+    int32_t txBlockSize = numSamplesPerIteration;
+    samplesRemaining = numSamplesRequired;
+    while (numSamplesSent < numSamplesRequired)
+    {
 
+        // Transmits one block of samples for all channels.
+        txComplete = EvbHostCommGetTxStatus();
+        if (txComplete == 1)
+        {
+            samplesRemaining = numSamplesRequired - numSamplesSent;
+            if (samplesRemaining >= txBlockSize)
+            {
+                txBlockSize = numSamplesPerIteration;
+            }
+            else
+            {
+                txBlockSize = samplesRemaining;
+            }
+
+            ADICircBufRead(pExample->samplesBuffer.pCircBuff, (uint8_t *)&linearBuffer[0],
+                           txBlockSize * APP_CFG_BYTES_PER_SAMPLE);
+            EvbHostCommTransmitAsync(&uartInfo, (uint8_t *)&linearBuffer[0],
+                                     txBlockSize * APP_CFG_BYTES_PER_SAMPLE);
+            numSamplesSent += txBlockSize;
+        }
+        samplesCopied += numSamplesPerIteration;
+    }
+    return 0;
+}
+
+#else
 int32_t IioSubmitBuffer(int32_t numBytes)
 {
     ADI_ADC_STATUS adcStatus = ADI_ADC_STATUS_SUCCESS;
@@ -302,7 +347,7 @@ int32_t IioSubmitBuffer(int32_t numBytes)
             }
 
             // Transmits one block of samples for all channels.
-            txComplete = EvbGetTxStatus();
+            txComplete = EvbHostCommGetTxStatus();
             if (txComplete == 1)
             {
                 samplesRemaining = numSamplesRequired - numSamplesSent;
@@ -317,7 +362,7 @@ int32_t IioSubmitBuffer(int32_t numBytes)
 
                 ADICircBufRead(pExample->samplesBuffer.pCircBuff, (uint8_t *)&linearBuffer[0],
                                txBlockSize * APP_CFG_BYTES_PER_SAMPLE);
-                EvbHostUartTransmitAsync(&uartInfo, (uint8_t *)&linearBuffer[0],
+                EvbHostCommTransmitAsync(&uartInfo, (uint8_t *)&linearBuffer[0],
                                          txBlockSize * APP_CFG_BYTES_PER_SAMPLE);
                 numSamplesSent += txBlockSize;
             }
@@ -327,6 +372,7 @@ int32_t IioSubmitBuffer(int32_t numBytes)
     AdcIfStopCapture(pAdcIf);
     return 0;
 }
+#endif
 
 ADC_EXAMPLE_STATUS ProcessCommand(void)
 {
@@ -368,7 +414,7 @@ ADC_EXAMPLE_STATUS ProcessCommand(void)
 /** IIOD channels attributes list */
 static AttributeType iioChanAttr[] = {
     ADC_CHN_ATTR("chn_gain", ADC_EXAMPLE_ATTR_ID_CHAN_GAIN, ADI_ATTR_TYPE_FLOAT),
-    ADC_CHN_ATTR("chn_datapath_config", ADC_EXAMPLE_ATTR_ID_DATAPATH_CONFIG, ADI_TYPE_UINT32),
+    ADC_CHN_ATTR("chn_datapath_config", ADC_EXAMPLE_ATTR_ID_DATAPATH_CONFIG, ADI_ATTR_TYPE_UINT32),
     ADC_CHN_ATTR("chn_offset", ADC_EXAMPLE_ATTR_ID_CHAN_OFFSET, ADI_ATTR_TYPE_INT32),
     ADC_CHN_ATTR("chn_xt_gain", ADC_EXAMPLE_ATTR_ID_CHAN_XT_GAIN, ADI_ATTR_TYPE_FLOAT),
     ADC_CHN_ATTR("chn_xt_aggressor", ADC_EXAMPLE_ATTR_ID_CHAN_XT_AGGRESSOR, ADI_ATTR_TYPE_UINT8),
@@ -403,7 +449,7 @@ static AttributeType iioGlobalAttributes[] = {
 /** IIO Channels*/
 static ChannelParams iioChannels[] = {
     IIO_CHAN("Chan0", 0), IIO_CHAN("Chan1", 1), IIO_CHAN("Chan2", 2), IIO_CHAN("Chan3", 3),
-    IIO_CHAN("Chan4", 4), IIO_CHAN("Chan5", 5), IIO_CHAN("Chan6", 6), END_ATTRIBUTES_ARRAY};
+    IIO_CHAN("Chan4", 4), IIO_CHAN("Chan5", 5), IIO_CHAN("Chan6", 6)};
 
 int32_t InitDeviceAttributes(DeviceAttributes *pDeviceAttribute)
 {
@@ -478,7 +524,7 @@ void ExtractAttributeValue(char *pSrc, int32_t attrId, uint8_t *pValueSize)
         ConvertStrToInt32(pSrc);
         *pValueSize = sizeof(int32_t);
         break;
-    case ADI_TYPE_UINT32:
+    case ADI_ATTR_TYPE_UINT32:
         ConvertStrtoUnit32(pSrc);
         *pValueSize = sizeof(uint32_t);
         break;
@@ -528,11 +574,11 @@ ADI_ATTR_TYPE GetAttributeDataType(int32_t attrId)
 
     return attrType;
 }
-void HostUartRxCallback()
+void HostUartRxCallback(uint8_t *pData, uint32_t numBytes)
 {
     ADC_EXAMPLE *pExample = &adcExample;
     EXAMPLE_CLI_INFO *pCliInfo = pExample->pCliInfo;
-    adi_cli_RxCallback(pCliInfo->hCli);
+    adi_cli_RxCallback(pCliInfo->hCli, pData, numBytes);
 }
 
 void HostUartTxCallback(void)
@@ -547,7 +593,7 @@ int32_t CliReceiveAsync(void *pInfo, char *pData, uint32_t numBytes)
     int32_t status = 0;
     if (pInfo != NULL)
     {
-        status = EvbHostUartReceiveAsync(pInfo, (uint8_t *)pData, numBytes);
+        status = EvbHostCommReceiveAsync(pInfo, (uint8_t *)pData, numBytes);
     }
     return status;
 }
@@ -557,7 +603,7 @@ int32_t CliTransmitAsync(void *pInfo, uint8_t *pData, uint32_t numBytes)
     int32_t status = 0;
     if (pInfo != NULL)
     {
-        status = EvbHostUartTransmitAsync(pInfo, pData, numBytes);
+        status = EvbHostCommTransmitAsync(pInfo, pData, numBytes);
     }
     return status;
 }
@@ -797,7 +843,7 @@ void FormatString(char *pDst, uint8_t *pValue, ADI_ATTR_TYPE attrType)
         val = *(int32_t *)pValue;
         sprintf(pDst, "%.2f", (float)val);
         break;
-    case ADI_TYPE_UINT32:
+    case ADI_ATTR_TYPE_UINT32:
         uval = *(uint32_t *)pValue;
         sprintf(pDst, "%.2f", (float)uval);
         break;

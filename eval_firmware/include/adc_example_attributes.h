@@ -142,7 +142,7 @@ int GetAttribute(int32_t attrId, int32_t *pChanIdx, uint32_t *pValue, uint8_t *p
  * @param valueSize - Size of the value in bytes
  * @return int32_t - Status
  */
-int SetAttribute(int32_t attrId, uint8_t *pChanIdx, uint8_t *pValue, uint8_t valueSize);
+int32_t SetAttribute(int32_t attrId, uint8_t *pChanIdx, uint8_t *pValue, uint8_t valueSize);
 
 /**
  * @brief Read from a register

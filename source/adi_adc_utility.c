@@ -22,7 +22,7 @@
 /** Min value of clk input */
 #define CLK_IN_MIN 3000000
 /** Max value of clk input */
-#define CLK_OUT_MIN 16384000
+#define CLK_IN_MAX 16384000
 
 static ADI_ADC_STATUS PopulateStreamModeAde91xx(ADI_ADC_STREAM_MODE streamMode,
                                                 uint8_t *pConfig0StreamDbg);
@@ -51,6 +51,7 @@ ADI_ADC_STATUS adi_adcutil_PopulateStreamMode(ADI_ADC_STREAM_MODE streamMode, ui
                 (pAdcType[i] != ADI_ADC_TYPE_ADEMA127))
             {
                 status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
+                break;
             }
         }
     }
@@ -98,6 +99,7 @@ ADI_ADC_STATUS adi_adcutil_PopulateSamplingRate(uint32_t clkIn, uint32_t samplin
                 (pAdcType[i] != ADI_ADC_TYPE_ADEMA127))
             {
                 status = ADI_ADC_STATUS_INVALID_ADC_TYPE;
+                break;
             }
         }
     }
@@ -194,7 +196,6 @@ uint32_t adi_adcutil_ExtractChannel(int32_t *pSrc, uint32_t numSamples, uint32_t
     uint32_t mask;
     uint32_t sampleIdx;
     uint32_t channelIdx;
-
     for (sampleIdx = 0; sampleIdx < numSamples; sampleIdx++)
     {
         for (channelIdx = 0; channelIdx < numChannels; channelIdx++)
@@ -226,7 +227,7 @@ ADI_ADC_STATUS PopulateSamplingRateAdema12x(uint32_t clkIn, uint32_t samplingRat
     uint8_t prescaler;
     uint16_t deci;
 
-    if ((clkIn < CLK_IN_MIN) || (clkIn > CLK_OUT_MIN))
+    if ((clkIn < CLK_IN_MIN) || (clkIn > CLK_IN_MAX))
     {
         status = ADI_ADC_STATUS_INVALID_SAMPLING_RATE;
     }

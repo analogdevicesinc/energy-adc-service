@@ -25,15 +25,15 @@ extern "C" {
 /** Major revision*/
 #define ADI_ADC_MAJOR_REVISION 1
 /** Minor revision*/
-#define ADI_ADC_MINOR_REVISION 0
+#define ADI_ADC_MINOR_REVISION 1
 /** Patch number*/
 #define ADI_ADC_PATCH_NUMBER 0
 /** ID to differentiate different builds of same release.
  *  Updated through  automation*/
-#define ADI_ADC_BUILD_HASH 0xb30f157a1
+#define ADI_ADC_BUILD_HASH 0x1726e856f
 /** Build Number.
  *  Updated through  automation*/
-#define ADI_ADC_BUILD_NUM 2508190
+#define ADI_ADC_BUILD_NUM 2510300
 
 /** Release version */
 #define ADI_ADC_VERSION                                                                            \

@@ -5,6 +5,7 @@
 /**
  * @file  adc_datapath_cfg.h
  * @brief Configuration file for ADC datapath settings.
+ * These settings are applied when APP_CFG_ENABLE_DATAPATH is enabled.
  * @{
  */
 

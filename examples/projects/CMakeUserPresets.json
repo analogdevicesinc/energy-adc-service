@@ -1,0 +1,75 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "Debug-App-Mcu-H5-Armgcc",
+            "inherits": "default",
+            "cacheVariables": {
+              "CMAKE_BUILD_TYPE": "Debug",
+              "EVB": "app_mcu_h5",
+              "TOOLCHAIN": "gcc-arm-none-eabi"
+            }
+          },
+          {
+            "name": "Release-App-Mcu-H5-Armgcc",
+            "inherits": "default",
+            "cacheVariables": {
+              "CMAKE_BUILD_TYPE": "Release",
+              "EVB": "app_mcu_h5",
+              "TOOLCHAIN": "gcc-arm-none-eabi"
+            }
+          },
+        {
+            "name": "Debug-bcm-adema127",
+            "inherits": "default",
+            "cacheVariables": {
+                "BOARD_TYPE_BCM_ADEMA127": "ON",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "Release-bcm-adema127",
+            "inherits": "default",
+            "cacheVariables": {
+                "BOARD_TYPE_BCM_ADEMA127": "ON",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "Debug-bcm-ade9113-adema127",
+            "inherits": "default",
+            "cacheVariables": {
+                "BOARD_TYPE_BCM_ADE9113_ADEMA127": "ON",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "Release-bcm-ade9113-adema127",
+            "inherits": "default",
+            "cacheVariables": {
+                "BOARD_TYPE_BCM_ADE9113_ADEMA127": "ON",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "Debug-dummy",
+            "inherits": "default",
+            "cacheVariables": {
+                "BOARD_TYPE_BCM_ADE9113_ADEMA127": "ON",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "EVB": "dummy_board",
+                "TOOLCHAIN": "gcc"
+            }
+        },
+        {
+            "name": "Release-dummy",
+            "inherits": "default",
+            "cacheVariables": {
+                "BOARD_TYPE_BCM_ADE9113_ADEMA127": "ON",
+                "CMAKE_BUILD_TYPE": "Release",
+                "EVB": "dummy_board",
+                "TOOLCHAIN": "gcc"
+            }
+        }
+    ]
+}

@@ -69,6 +69,11 @@ add_executable(${CMAKE_PROJECT_NAME})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${APP_SRC})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${APP_INCLUDES})
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE adc_service board_support)
+if(BOARD_TYPE_BCM_ADEMA127)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BOARD_TYPE_BCM_ADEMA127)
+elseif(BOARD_TYPE_BCM_ADE9113_ADEMA127)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE BOARD_TYPE_BCM_ADE9113_ADEMA127)
+endif()
 
 # ------------------------------------------------------------------------------
 # Post-build: Generate HEX file
