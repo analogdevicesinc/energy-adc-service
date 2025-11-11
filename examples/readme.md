@@ -34,5 +34,5 @@ The sample read example project shows how to call various APIs and interface fun
 
 By default, the project builds for a single ADEMA127 device configuration.
 To build for a different ADC configuration, use one of the following CMake options:
-- -DBOARD_TYPE_BCM_ADEMA127=ON — for four ADEMA127 based board
-- -DBOARD_TYPE_BCM_ADE9113_ADEMA127=ON — for ADE9113 + ADEMA127 combined board
+- -DBOARD_TYPE_4X_ADEMA127=ON — for four ADEMA127 based board
+- -DBOARD_TYPE_4X_ADEMA127_1X_ADE9113=ON — for ADE9113 + ADEMA127 combined board

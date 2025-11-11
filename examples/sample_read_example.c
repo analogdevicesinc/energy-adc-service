@@ -11,7 +11,7 @@
 /* Max number of samples to buffer */
 #define ADC_NUM_SAMPLES_REQUIRED 64000
 
-#if BOARD_TYPE_BCM_ADEMA127
+#if BOARD_TYPE_4X_ADEMA127
 static uint8_t numVoltageChannels = 3;
 static uint8_t numCurrentChannels = 25;
 static uint8_t numTotalAdcChannels = 28;
@@ -31,7 +31,7 @@ static ADC_BOARD_CONFIG adcBoardConfig = {
     .adcStreamMode = ADI_ADC_STREAM_MODE_NORM,
 };
 
-#elif BOARD_TYPE_BCM_ADE9113_ADEMA127
+#elif BOARD_TYPE_4X_ADEMA127_1X_ADE9113
 static uint8_t numVoltageChannels = 3;
 static uint8_t numCurrentChannels = 21;
 static uint8_t numTotalAdcChannels = 24;
